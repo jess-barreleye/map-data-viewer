@@ -45,6 +45,8 @@ This server reads your `map.mbtiles` and makes the vector tiles accessible via a
 
     *The server will typically start on **Port 8080**.*
 
+    You can bring up the map here: http://localhost:8080
+
 ---
 
 ### Step 2: Configure Map Files (`style.json`)
@@ -63,7 +65,7 @@ This server allows your browser to securely load the index.html and style.json f
 
 Open a second terminal window.
 
-Navigate to your main project directory (project4upload/).
+Navigate to your main project directory (mapLibre-rov/).
 
 Run the Python HTTP server:
  ```bash
