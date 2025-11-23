@@ -53,12 +53,12 @@ The `style.json` file tells MapLibre where to find your tiles. This configuratio
 
 **File: `style.json`**
 
-Step 3: Configure Map Files (index.html)
+### Step 3: Configure Map Files (index.html)
 The index.html file sets up the MapLibre viewer and references the style.json file.
 
 File: index.html
 
-Step 4: Start the Web Server (Python HTTP Server)
+### Step 4: Start the Web Server (Python HTTP Server)
 This server allows your browser to securely load the index.html and style.json files.
 
 Open a second terminal window.
@@ -70,7 +70,7 @@ Run the Python HTTP server:
 python -m http.server 8000
  ```
 
-Step 5: View the Map
+### Step 5: View the Map
 Open your web browser.
 
 Navigate to the local server address:
