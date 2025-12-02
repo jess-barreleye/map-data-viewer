@@ -1,0 +1,22 @@
+WebSocket server started on ws://localhost:8081
+Waiting for Seapath GPS data on UDP 0.0.0.0:12345...
+Supported NMEA sentences: GGA, RMC, VTG
+UDP GPS Listener started on 0.0.0.0:12345
+WebSocket client connected
+Received UDP data from 127.0.0.1:63820 - $GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A
+Parsing sentence: $GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A
+Parsed data: {
+  type: 'RMC',
+  timestamp: '2025-11-27T19:53:42.620Z',
+  time: '123519',
+  date: '230394',
+  lat: 48.11729999999999,
+  lon: -11.516666666666667,
+  speed: 22.4,
+  course: 84.4,
+  status: 'A'
+}
+GPS Update: RMC - Lat: 48.117300, Lon: -11.516667
+WebSocket client disconnected
+WebSocket client connected
+WebSocket client connected

@@ -112,35 +112,52 @@ An interactive web-based map viewer built with MapLibre GL JS for visualizing oc
 ## Requirements
 - Docker (and Docker Compose or docker CLI)
 
-## Quick Start (recommended: Docker)
+## Quick Start
 
-1. From the project root (`mapLibre-rov/`) start the tile server + frontend using the included `docker-compose.yml` build:
+### 1. Start the Tile Server (Docker)
 
 ```bash
-# Build image and start container (tileserver on :8080)
-docker-compose up --build
-
-# Run in background
+# From project root
 docker-compose up -d --build
-
-# Stop the server
-docker-compose down
 
 # View logs
 docker-compose logs -f
 ```
 
-2. In a separate terminal, serve the frontend files so the browser can load `style.json` and `index.html`:
+This starts:
+- **TileServer GL** on port 8080 (serves MBTiles)
+- **GPS Server** on ports 8081 (WebSocket) and 12345 (UDP)
+
+### 2. Start the Frontend Server
 
 ```bash
-# From project root
-# start a simple static server on port 8000
-python -m http.server 8000
+# From project root - use Node.js server (recommended)
+node server.js
 
-# Then open http://localhost:8000 in your browser
+# Or use Python if Node.js is not available
+python -m http.server 8000
 ```
 
-3. Open the map: http://localhost:8000/
+### 3. Open the Map
+
+Navigate to: **http://localhost:8000**
+
+To access from other devices on your network, use your machine's IP address (find it with `ipconfig getifaddr en0` on macOS or `hostname -I` on Linux).
+
+### 4. Test Live GPS Feed
+
+In a new terminal window:
+
+```bash
+# Send test NMEA sentence
+echo '$GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A' | nc -u localhost 12345
+
+# Or use the Node.js test script
+cd gps-server
+node test-gps.js
+```
+
+You should see a red vessel marker appear on the map! 🎯
 
 ## How it works
 
@@ -207,11 +224,21 @@ No restart needed - just refresh the browser at `http://localhost:8000/`
 ## Commands Summary
 
 ```bash
-docker-compose up --build      # build and start tileserver
-docker-compose up -d --build   # start in background
-docker-compose restart         # restart services
-docker-compose down            # stop and remove containers
-python -m http.server 8000     # serve frontend files
+# Docker (all services)
+docker-compose up -d --build      # start all services in background
+docker-compose logs -f            # view all logs
+docker-compose logs -f gps-server # view GPS server logs only
+docker-compose restart gps-server # restart GPS server
+docker-compose down               # stop and remove containers
+
+# Frontend server
+node server.js                    # Node.js server (recommended)
+python -m http.server 8000        # Python alternative
+
+# GPS testing
+cd gps-server && node test-gps.js                    # send test GPS data
+echo '$GPRMC,...*6A' | nc -u localhost 12345         # manual test
+tail -f gps-server/gps-server.log                    # watch logs
 ```
 
 ## Project Structure
@@ -220,16 +247,24 @@ python -m http.server 8000     # serve frontend files
 mapLibre-rov/
 ├── index.html                  # MapLibre frontend with dynamic layer discovery
 ├── style.json                  # Base map style (ocean background + MapTiler basemap)
-├── docker-compose.yml          # Docker setup for TileServer GL
+├── server.js                   # Node.js static file server for frontend
+├── package.json                # Frontend server dependencies
+├── docker-compose.yml          # Docker orchestration (tile + GPS servers)
 ├── Dockerfile                  # TileServer GL container image
 ├── tileserver-config.json      # Explicit tileset configuration
 ├── maps/                       # MBTiles raster files (mounted into container)
 │   ├── map.mbtiles
 │   └── area_100m_contour.mbtiles
-└── layers/                     # Vector data layers (auto-discovered by frontend)
-    ├── *.csv / *.txt          # Point data files
-    ├── *.json / *.geojson     # GeoJSON geometry files
-    └── *.ascii / *.asciifile  # Custom ASCII format files
+├── layers/                     # Vector data layers (auto-discovered by frontend)
+│   ├── *.csv / *.txt          # Point data files
+│   ├── *.json / *.geojson     # GeoJSON geometry files
+│   └── *.ascii / *.asciifile  # Custom ASCII format files
+└── gps-server/                 # GPS UDP listener and WebSocket relay
+    ├── server.js              # GPS server implementation
+    ├── package.json           # GPS server dependencies
+    ├── Dockerfile             # GPS server container image
+    ├── test-gps.js            # Test script for sending GPS data
+    └── .env.example           # Environment configuration template
 ```
 
 ## Features
@@ -237,6 +272,7 @@ mapLibre-rov/
 ### UI Controls
 - **MBTiles Maps Panel**: Individual checkboxes and opacity sliders for each tileset
 - **Data Layers Panel**: Individual controls for vector layers from `layers/` folder
+- **Live GPS Feeds Panel**: Real-time vessel tracking with toggle and opacity controls
 - **Legend**: Dynamic legend showing active layers with color swatches (click to zoom to bounds)
 - **Layer Stacking**: MBTiles render above basemap, vector layers render on top of MBTiles
 
@@ -246,3 +282,102 @@ mapLibre-rov/
 - **Lines**: GeoJSON LineStrings and MultiLineStrings
 - **Polygons**: GeoJSON Polygons and MultiPolygons
 - **Labels**: Automatic text labels for point features with name/id properties
+- **Live GPS**: Real-time vessel tracking from Seapath navigation system via UDP
+
+---
+
+## Live GPS Tracking
+
+The project includes a GPS server that receives UDP transmissions from marine navigation systems (Seapath) and broadcasts vessel positions to the map in real-time.
+
+### Architecture
+```
+Seapath Navigation → UDP (port 12345) → GPS Server (Node.js) → WebSocket (port 8081) → Browser
+```
+
+### GPS Server Features
+- Receives NMEA sentences via UDP from Seapath navigation system
+- Parses GGA (position), RMC (recommended minimum), and VTG (course/speed) sentence types
+- Converts NMEA coordinate format (DDMM.MMMM) to decimal degrees
+- Broadcasts parsed GPS data to connected browser clients via WebSocket
+- Stores latest GPS data for new client connections
+- Automatic reconnection on disconnect
+
+### Supported NMEA Sentences
+- **GGA**: Global Positioning System Fix Data (lat/lon, satellites, altitude, quality)
+- **RMC**: Recommended Minimum Specific GNSS Data (lat/lon, speed, course, date/time)
+- **VTG**: Course Over Ground and Ground Speed (course, speed in knots/km/h)
+
+### Frontend GPS Display
+- Real-time vessel marker with color-coded position indicator
+- Heading arrow showing vessel course (from NMEA RMC/VTG)
+- Track trail showing last 100 positions
+- Interactive popup with vessel metadata (speed, course, satellites, quality)
+- Toggle visibility and opacity controls
+- Automatic reconnection with status indicator
+
+### Running with Docker (Production)
+The GPS server is included in `docker-compose.yml`:
+
+```bash
+# Start all services (tile server + GPS server)
+docker-compose up -d --build
+
+# View GPS server logs
+docker-compose logs -f gps-server
+
+# Restart GPS server
+docker-compose restart gps-server
+```
+
+### Running Standalone (Development)
+For development or when Docker is not available:
+
+```bash
+# Terminal 1: Start GPS server
+cd gps-server
+npm install
+node server.js
+
+# Terminal 2: Send test data
+echo '$GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A' | nc -u localhost 12345
+
+# Or use the test script
+node test-gps.js
+```
+
+### Configuration
+GPS server environment variables (set in `docker-compose.yml` or `.env`):
+- `UDP_PORT`: UDP port for receiving Seapath GPS data (default: 12345)
+- `UDP_HOST`: UDP bind address (default: 0.0.0.0)
+- `WS_PORT`: WebSocket port for browser clients (default: 8081)
+
+**Network Setup**: 
+- By default, services run on `localhost`
+- To access from network devices: Get your machine's IP with `ipconfig getifaddr en0` (macOS) or `hostname -I` (Linux)
+- Update `index.html` to replace `localhost` with your IP address in the tile server and WebSocket URLs
+
+### Connecting Seapath
+Configure your Seapath navigation system to transmit NMEA sentences via UDP to:
+- **Host**: Your machine's IP address (use `ipconfig getifaddr en0` or `hostname -I` to find it)
+- **Port**: 12345 (or configured UDP_PORT)
+- **Protocol**: UDP
+
+The GPS server will automatically parse incoming NMEA sentences and broadcast position updates to connected browsers.
+
+### Testing GPS Feed
+Several ways to test the GPS feed:
+
+```bash
+# Method 1: Using netcat (nc)
+echo '$GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A' | nc -u localhost 12345
+
+# Method 2: Using the test script
+cd gps-server
+node test-gps.js
+
+# Method 3: Watch server logs
+tail -f gps-server/gps-server.log
+```
+
+**Expected behavior**: Red vessel marker appears on map with heading arrow and track trail.

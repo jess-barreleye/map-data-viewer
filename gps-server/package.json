@@ -1,0 +1,12 @@
+{
+  "name": "maplibre-rov-gps-server",
+  "version": "1.0.0",
+  "description": "UDP GPS listener and WebSocket relay for live vessel tracking",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
+}

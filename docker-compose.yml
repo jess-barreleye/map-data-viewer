@@ -14,3 +14,15 @@ services:
     environment:
       - TILESERVER_GL_LOG_LEVEL=info
     restart: unless-stopped
+
+  gps-server:
+    build: ./gps-server
+    container_name: maplibre-gps-server
+    ports:
+      - "12345:12345/udp"  # UDP port for Seapath GPS data input
+      - "8081:8081"         # WebSocket port for browser clients
+    environment:
+      - UDP_PORT=12345
+      - UDP_HOST=0.0.0.0
+      - WS_PORT=8081
+    restart: unless-stopped

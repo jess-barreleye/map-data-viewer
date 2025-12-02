@@ -79,6 +79,17 @@
         <div id="mbtiles-list">Loading maps...</div>
         <h4 style="margin-top: 12px;">Data Layers</h4>
         <div id="layers-list">Loading layers...</div>
+        <h4 style="margin-top: 12px;">Live GPS Feeds</h4>
+        <div id="gps-list">
+            <div class="layer-entry" style="opacity: 0.7">
+                <div class="left">
+                    <span class="swatch" style="background:#ff4444"></span>
+                    <input type="checkbox" id="gps-seapath-chk" disabled>
+                    <label for="gps-seapath-chk">Seapath (connecting...)</label>
+                </div>
+                <input class="opacity" id="gps-seapath-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+            </div>
+        </div>
     </div>
 
     <div id="map"></div>
@@ -102,7 +113,7 @@
             // The container ID must match the div ID above
             container: 'map', 
             
-            // 🔥 CRITICAL FIX: Pointing to your local style.json
+            // CRITICAL FIX: Pointing to your local style.json
             style: './style.json', 
             
             // Initial camera position
@@ -119,7 +130,7 @@
             console.log("Custom map and layers loaded successfully. Data should be visible.");
             
             // Dynamically discover and load all .mbtiles from the tile server
-            (async () => {
+            const mbtilesLoaded = (async () => {
                 try {
                     const capabilitiesUrl = 'http://localhost:8080/data.json';
                     const capResponse = await fetch(capabilitiesUrl);
@@ -214,6 +225,9 @@
                     document.getElementById('mbtiles-list').innerText = 'Error loading maps';
                 }
             })();
+            
+            // Wait for MBTiles to load before loading vector layers on top
+            mbtilesLoaded.then(() => {
             // --- Layers folder integration ---
             const layersList = document.getElementById('layers-list');
 
@@ -510,6 +524,195 @@
                 console.error(err);
             });
             // --- end layers integration ---
+            
+            }); // End of mbtilesLoaded.then()
+            
+            // --- Live GPS Integration ---
+            let gpsWebSocket = null;
+            let gpsMarker = null;
+            let gpsTrailSource = null;
+            const gpsTrailCoordinates = [];
+            const MAX_TRAIL_POINTS = 100;
+            
+            function connectGPS() {
+                const wsUrl = 'ws://localhost:8081';
+                const gpsList = document.getElementById('gps-list');
+                const checkbox = document.getElementById('gps-seapath-chk');
+                const slider = document.getElementById('gps-seapath-op');
+                const label = gpsList.querySelector('label[for="gps-seapath-chk"]');
+                
+                gpsWebSocket = new WebSocket(wsUrl);
+                
+                gpsWebSocket.onopen = () => {
+                    console.log('GPS WebSocket connected');
+                    label.textContent = 'Seapath (connected)';
+                    checkbox.disabled = false;
+                    slider.disabled = false;
+                    gpsList.querySelector('.layer-entry').style.opacity = '1';
+                };
+                
+                gpsWebSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Only process if we have valid lat/lon
+                        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
+                        
+                        // Create or update marker
+                        if (!gpsMarker) {
+                            // Create vessel marker element
+                            const el = document.createElement('div');
+                            el.className = 'gps-marker';
+                            el.style.width = '24px';
+                            el.style.height = '24px';
+                            el.style.borderRadius = '50%';
+                            el.style.backgroundColor = '#ff4444';
+                            el.style.border = '3px solid white';
+                            el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                            el.style.cursor = 'pointer';
+                            
+                            // Add heading indicator if available
+                            if (Number.isFinite(data.course)) {
+                                const arrow = document.createElement('div');
+                                arrow.style.position = 'absolute';
+                                arrow.style.top = '-12px';
+                                arrow.style.left = '50%';
+                                arrow.style.transform = `translateX(-50%) rotate(${data.course}deg)`;
+                                arrow.style.width = '0';
+                                arrow.style.height = '0';
+                                arrow.style.borderLeft = '6px solid transparent';
+                                arrow.style.borderRight = '6px solid transparent';
+                                arrow.style.borderBottom = '12px solid #ff4444';
+                                el.appendChild(arrow);
+                            }
+                            
+                            gpsMarker = new maplibregl.Marker({ element: el })
+                                .setLngLat([data.lon, data.lat])
+                                .addTo(map);
+                            
+                            // Create popup with vessel info
+                            const popup = new maplibregl.Popup({ offset: 15 })
+                                .setHTML(formatGPSPopup(data));
+                            gpsMarker.setPopup(popup);
+                            
+                            // Create trail source and layer
+                            gpsTrailSource = {
+                                type: 'geojson',
+                                data: {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: [[data.lon, data.lat]]
+                                    }
+                                }
+                            };
+                            
+                            map.addSource('gps-trail', gpsTrailSource);
+                            map.addLayer({
+                                id: 'gps-trail-layer',
+                                type: 'line',
+                                source: 'gps-trail',
+                                paint: {
+                                    'line-color': '#ff4444',
+                                    'line-width': 2,
+                                    'line-opacity': 0.6
+                                }
+                            });
+                            
+                            gpsTrailCoordinates.push([data.lon, data.lat]);
+                        } else {
+                            // Update marker position
+                            gpsMarker.setLngLat([data.lon, data.lat]);
+                            
+                            // Update popup content
+                            gpsMarker.getPopup().setHTML(formatGPSPopup(data));
+                            
+                            // Update heading indicator if present
+                            if (Number.isFinite(data.course)) {
+                                const arrow = gpsMarker.getElement().querySelector('div');
+                                if (arrow) {
+                                    arrow.style.transform = `translateX(-50%) rotate(${data.course}deg)`;
+                                }
+                            }
+                            
+                            // Update trail
+                            gpsTrailCoordinates.push([data.lon, data.lat]);
+                            if (gpsTrailCoordinates.length > MAX_TRAIL_POINTS) {
+                                gpsTrailCoordinates.shift();
+                            }
+                            
+                            if (map.getSource('gps-trail')) {
+                                map.getSource('gps-trail').setData({
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: gpsTrailCoordinates
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`GPS Update: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                    } catch (err) {
+                        console.error('GPS data parse error:', err);
+                    }
+                };
+                
+                gpsWebSocket.onerror = (err) => {
+                    console.error('GPS WebSocket error:', err);
+                    label.textContent = 'Seapath (error)';
+                };
+                
+                gpsWebSocket.onclose = () => {
+                    console.log('GPS WebSocket disconnected');
+                    label.textContent = 'Seapath (disconnected)';
+                    checkbox.disabled = true;
+                    slider.disabled = true;
+                    gpsList.querySelector('.layer-entry').style.opacity = '0.7';
+                    
+                    // Attempt reconnect after 5 seconds
+                    setTimeout(connectGPS, 5000);
+                };
+                
+                // Checkbox controls visibility
+                checkbox.addEventListener('change', () => {
+                    if (gpsMarker) {
+                        gpsMarker.getElement().style.display = checkbox.checked ? 'block' : 'none';
+                    }
+                    if (map.getLayer('gps-trail-layer')) {
+                        map.setLayoutProperty('gps-trail-layer', 'visibility', checkbox.checked ? 'visible' : 'none');
+                    }
+                });
+                
+                // Slider controls opacity
+                slider.addEventListener('input', () => {
+                    const opacity = parseFloat(slider.value);
+                    if (gpsMarker) {
+                        gpsMarker.getElement().style.opacity = opacity.toString();
+                    }
+                    if (map.getLayer('gps-trail-layer')) {
+                        map.setPaintProperty('gps-trail-layer', 'line-opacity', opacity * 0.6);
+                    }
+                });
+            }
+            
+            function formatGPSPopup(data) {
+                let html = '<div style="font-family: monospace; font-size: 12px;">';
+                html += `<b>Seapath Navigation</b><br>`;
+                html += `<b>Position:</b> ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}<br>`;
+                if (Number.isFinite(data.speed)) html += `<b>Speed:</b> ${data.speed.toFixed(1)} kts<br>`;
+                if (Number.isFinite(data.course)) html += `<b>Course:</b> ${data.course.toFixed(1)}°<br>`;
+                if (data.satellites) html += `<b>Satellites:</b> ${data.satellites}<br>`;
+                if (data.quality !== undefined) html += `<b>Quality:</b> ${data.quality}<br>`;
+                if (data.altitude) html += `<b>Altitude:</b> ${parseFloat(data.altitude).toFixed(1)}m<br>`;
+                if (data.time) html += `<b>Time:</b> ${data.time}<br>`;
+                html += '</div>';
+                return html;
+            }
+            
+            // Connect to GPS server when map loads
+            connectGPS();
+            // --- End GPS integration ---
         });
 
     </script>
