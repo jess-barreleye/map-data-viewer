@@ -36,29 +36,94 @@
             top: 70px;
             left: 10px;
             background: rgba(255,255,255,0.95);
-            padding: 8px 10px;
+            padding: 0;
             border-radius: 6px;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
             font-size: 13px;
             z-index: 3;
             box-shadow: 0 1px 6px rgba(0,0,0,0.15);
-            max-height: 60vh;
-            overflow: auto;
             width: 260px;
+            max-height: calc(100vh - 80px);
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch;
         }
-        #layers-panel h4 { margin: 0 0 8px 0; font-size: 14px; }
-        .layer-entry { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px }
-        .layer-entry .left { display:flex; align-items:center; gap:8px }
-        .layer-entry .opacity { width: 90px }
-        .swatch { width: 12px; height: 12px; border-radius: 3px; display:inline-block; margin-right:6px; border:1px solid rgba(0,0,0,0.1) }
+        #layers-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        #layers-panel::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+        #layers-panel::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+        #layers-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.3);
+        }
+        .layer-group {
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+        .layer-group:last-child {
+            border-bottom: none;
+        }
+        .layer-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(0,0,0,0.02);
+            transition: background 0.2s;
+        }
+        .layer-group-header:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        .layer-group-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        .layer-group-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .layer-group-toggle-all {
+            margin-right: 8px;
+        }
+        .layer-group-arrow {
+            transition: transform 0.2s;
+            font-size: 12px;
+            color: #666;
+        }
+        .layer-group.collapsed .layer-group-arrow {
+            transform: rotate(-90deg);
+        }
+        .layer-group-content {
+            padding: 8px 12px;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+        .layer-group.collapsed .layer-group-content {
+            max-height: 0;
+            padding: 0 12px;
+            overflow: hidden;
+        }
+        .layer-entry { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; height: 26px }
+        .layer-entry .left { display:flex; align-items:center; gap:6px }
+        .layer-entry .opacity { width: 90px; height: 4px; margin: 0; vertical-align: middle }
+        .layer-entry input[type="checkbox"] { width: 12px; height: 12px; margin: 0; flex-shrink: 0 }
+        .layer-entry label { cursor: pointer; user-select: none; line-height: 1; font-size: 13px; margin: 0 }
+        .swatch { width: 10px; height: 10px; border-radius: 2px; display:inline-block; flex-shrink: 0; border:1px solid rgba(0,0,0,0.15) }
         #layers-legend { margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px }
         #legend-list .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer }
         #legend-list .legend-item .name { flex:1 }
-        /* Bottom-left legend container */
+        /* Bottom-right legend container (above MapLibre logo) */
         #legend-container {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
+            bottom: 30px;
+            right: 10px;
             background: rgba(255,255,255,0.95);
             padding: 8px 10px;
             border-radius: 6px;
@@ -70,24 +135,423 @@
             overflow: auto;
             width: 220px;
         }
+        /* Bottom-center coordinates display */
+        #coordinates-display {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            z-index: 4;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+            pointer-events: none;
+            color: #333;
+        }
+        /* Top-center ROV info display */
+        #rov-info-display {
+            position: absolute;
+            top: 10px;
+            left: calc(50% + 150px);
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 4;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+            color: #333;
+            display: none;
+        }
+        #rov-info-display.active {
+            display: block;
+        }
+        #ship-info-display {
+            position: absolute;
+            top: 10px;
+            left: calc(50% - 150px);
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 4;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+            color: #333;
+            display: none;
+        }
+        #ship-info-display.active {
+            display: block;
+        }
+        .info-display-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+            margin-bottom: 4px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            padding-bottom: 4px;
+        }
+        .time-preset-btn {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+        .time-preset-btn:hover {
+            background: #e0e0e0;
+        }
+        .time-preset-btn.active {
+            background: #4a90e2;
+            color: white;
+            border-color: #4a90e2;
+        }
     </style>
 </head>
 
 <body>
     <div id="layers-panel">
-        <h4>MBTiles Maps</h4>
-        <div id="mbtiles-list">Loading maps...</div>
-        <h4 style="margin-top: 12px;">Data Layers</h4>
-        <div id="layers-list">Loading layers...</div>
-        <h4 style="margin-top: 12px;">Live GPS Feeds</h4>
-        <div id="gps-list">
-            <div class="layer-entry" style="opacity: 0.7">
-                <div class="left">
-                    <span class="swatch" style="background:#ff4444"></span>
-                    <input type="checkbox" id="gps-seapath-chk" disabled>
-                    <label for="gps-seapath-chk">Seapath (connecting...)</label>
+        <!-- MBTiles Maps Group -->
+        <div class="layer-group" id="maps-group">
+            <div class="layer-group-header" onclick="toggleLayerGroup('maps-group')">
+                <div class="layer-group-header-left">
+                    <input type="checkbox" id="maps-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('maps')">
+                    <span class="layer-group-title">Maps</span>
                 </div>
-                <input class="opacity" id="gps-seapath-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                <span class="layer-group-arrow">▼</span>
+            </div>
+            <div class="layer-group-content">
+                <div id="mbtiles-list">Loading maps...</div>
+            </div>
+        </div>
+
+        <!-- Waypoints Group -->
+        <div class="layer-group" id="data-group">
+            <div class="layer-group-header" onclick="toggleLayerGroup('data-group')">
+                <div class="layer-group-header-left">
+                    <input type="checkbox" id="data-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('data')">
+                    <span class="layer-group-title">Waypoints</span>
+                </div>
+                <span class="layer-group-arrow">▼</span>
+            </div>
+            <div class="layer-group-content">
+                <div id="layers-list">Loading layers...</div>
+            </div>
+        </div>
+
+        <!-- Live GPS Feeds Group -->
+        <div class="layer-group" id="gps-group">
+            <div class="layer-group-header" onclick="toggleLayerGroup('gps-group')">
+                <div class="layer-group-header-left">
+                    <input type="checkbox" id="gps-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('gps')">
+                    <span class="layer-group-title">Live GPS Feeds</span>
+                </div>
+                <span class="layer-group-arrow">▼</span>
+            </div>
+            <div class="layer-group-content">
+                <div id="gps-list">
+                    <!-- Ship GPS Feed -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <span class="swatch" style="background:#888888"></span>
+                            <input type="checkbox" id="gps-ship-chk" disabled>
+                            <label for="gps-ship-chk">Ship (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="gps-ship-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                    </div>
+                    <div class="layer-entry" style="margin-left: 20px;">
+                        <div class="left">
+                            <input type="checkbox" id="gps-trackline-ship-chk" disabled checked>
+                            <label for="gps-trackline-ship-chk">Track Line Ship</label>
+                        </div>
+                    </div>
+                    
+                    <!-- ROV GPS Feed -->
+                    <div class="layer-entry" style="margin-top: 8px;">
+                        <div class="left">
+                            <span class="swatch" style="background:#888888"></span>
+                            <input type="checkbox" id="gps-rov-chk" disabled>
+                            <label for="gps-rov-chk">ROV (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="gps-rov-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                    </div>
+                    <div class="layer-entry" style="margin-left: 20px;">
+                        <div class="left">
+                            <input type="checkbox" id="gps-trackline-rov-chk" disabled checked>
+                            <label for="gps-trackline-rov-chk">Track Line ROV</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multibeam Swath Group -->
+        <div class="layer-group" id="multibeam-group">
+            <div class="layer-group-header" onclick="toggleLayerGroup('multibeam-group')">
+                <div class="layer-group-header-left">
+                    <input type="checkbox" id="multibeam-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('multibeam')">
+                    <span class="layer-group-title">Multibeam Swath</span>
+                </div>
+                <span class="layer-group-arrow">▼</span>
+            </div>
+            <div class="layer-group-content">
+                <div id="multibeam-list">
+                    <!-- EM124 -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <span class="swatch" style="background:#3b82f6"></span>
+                            <input type="checkbox" id="multibeam-em124-chk" disabled>
+                            <label for="multibeam-em124-chk">EM 124 (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="multibeam-em124-op" type="range" min="0" max="1" step="0.01" value="0.4" disabled>
+                    </div>
+                    
+                    <!-- EM712 -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <span class="swatch" style="background:#10b981"></span>
+                            <input type="checkbox" id="multibeam-em712-chk" disabled>
+                            <label for="multibeam-em712-chk">EM 712 (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="multibeam-em712-op" type="range" min="0" max="1" step="0.01" value="0.4" disabled>
+                    </div>
+                    
+                    <!-- EM2040 -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <span class="swatch" style="background:#f59e0b"></span>
+                            <input type="checkbox" id="multibeam-em2040-chk" disabled>
+                            <label for="multibeam-em2040-chk">EM 2040 (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="multibeam-em2040-op" type="range" min="0" max="1" step="0.01" value="0.4" disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADCP Section -->
+        <div class="layer-group" id="adcp-group">
+                <div class="layer-group-header" onclick="toggleLayerGroup('adcp-group')">
+                    <div class="layer-group-header-left">
+                        <input type="checkbox" id="adcp-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('adcp')">
+                        <span class="layer-group-title">ADCP</span>
+                    </div>
+                    <span class="layer-group-arrow">▼</span>
+                </div>
+                <div class="layer-group-content">
+                    <!-- Time Range Selector -->
+                    <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-weight: 500; font-size: 12px;">Time Range</label>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <div style="flex: 1;">
+                                <label for="adcp-start-datetime" style="display: block; font-size: 10px; color: #666; margin-bottom: 2px;">Start:</label>
+                                <input type="datetime-local" id="adcp-start-datetime" style="width: 100%; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label for="adcp-end-datetime" style="display: block; font-size: 10px; color: #666; margin-bottom: 2px;">End:</label>
+                                <input type="datetime-local" id="adcp-end-datetime" style="width: 100%; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+                            <button id="adcp-preset-1h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">1h</button>
+                            <button id="adcp-preset-6h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">6h</button>
+                            <button id="adcp-preset-12h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">12h</button>
+                            <button id="adcp-preset-24h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">24h</button>
+                            <button id="adcp-preset-3d" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">3d</button>
+                            <button id="adcp-preset-7d" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">7d</button>
+                        </div>
+                        <button id="adcp-apply-range" style="width: 100%; padding: 6px; background: #4a90e2; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: 500; font-size: 12px; margin-bottom: 4px;">Apply Time Range</button>
+                        <div id="adcp-binning-info" style="font-size: 10px; color: #666; text-align: center;">Binning: 5 min</div>
+                    </div>
+
+                    <!-- Depth Range Selection (Multi-select) -->
+                    <div style="padding: 8px 0; border-top: 1px solid rgba(0,0,0,0.1); margin-top: 10px;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-weight: 500; font-size: 12px;">Depth Ranges</label>
+                        </div>
+                        
+                        <!-- WH 300kHz -->
+                        <div style="font-size: 10px; color: #666; margin-top: 6px; margin-bottom: 4px;">WH 300kHz:</div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#ff6b6b"></span>
+                                <input type="checkbox" id="adcp-depth-0-25-chk" disabled data-instrument="WH300" data-depth="0-25">
+                                <label for="adcp-depth-0-25-chk">0-25m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-0-25-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#ffa502"></span>
+                                <input type="checkbox" id="adcp-depth-25-50-chk" disabled data-instrument="WH300" data-depth="25-50">
+                                <label for="adcp-depth-25-50-chk">25-50m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-25-50-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                        
+                        <!-- EC 150kHz -->
+                        <div style="font-size: 10px; color: #666; margin-top: 6px; margin-bottom: 4px;">EC 150kHz:</div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#2ed573"></span>
+                                <input type="checkbox" id="adcp-depth-50-150-chk" disabled data-instrument="EC150" data-depth="50-150">
+                                <label for="adcp-depth-50-150-chk">50-150m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-50-150-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#000000"></span>
+                                <input type="checkbox" id="adcp-depth-150-300-chk" disabled data-instrument="EC150" data-depth="150-300">
+                                <label for="adcp-depth-150-300-chk">150-300m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-150-300-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                        
+                        <!-- OS 38kHz -->
+                        <div style="font-size: 10px; color: #666; margin-top: 6px; margin-bottom: 4px;">OS 38kHz:</div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#a29bfe"></span>
+                                <input type="checkbox" id="adcp-depth-300-500-chk" disabled data-instrument="OS38" data-depth="300-500">
+                                <label for="adcp-depth-300-500-chk">300-500m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-300-500-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                        <div class="layer-entry">
+                            <div class="left">
+                                <span class="swatch" style="background:#fd79a8"></span>
+                                <input type="checkbox" id="adcp-depth-500plus-chk" disabled data-instrument="OS38" data-depth=">500">
+                                <label for="adcp-depth-500plus-chk">>500m (connecting...)</label>
+                            </div>
+                            <input class="opacity" id="adcp-depth-500plus-op" type="range" min="0" max="1" step="0.01" value="1" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Info Display -->
+                    <div class="layer-entry" style="font-size: 11px; color: #666; margin-top: 8px;">
+                        <div id="adcp-info">Last update: --</div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Data Layers (Oceanographic) Group -->
+        <div class="layer-group" id="oceanographic-group" style="display: block !important;">
+            <div class="layer-group-header" onclick="toggleLayerGroup('oceanographic-group')">
+                <div class="layer-group-header-left">
+                    <input type="checkbox" id="oceanographic-toggle-all" class="layer-group-toggle-all" checked onclick="event.stopPropagation(); toggleAllInGroup('oceanographic')">
+                    <span class="layer-group-title">Data Layers</span>
+                </div>
+                <span class="layer-group-arrow">▼</span>
+            </div>
+            <div class="layer-group-content">
+                <div id="oceanographic-list">
+                    <!-- Water Temperature -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-temperature-chk" disabled>
+                            <label for="ocean-temperature-chk">Temperature (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-temperature-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Salinity -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-salinity-chk" disabled>
+                            <label for="ocean-salinity-chk">Salinity (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-salinity-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Fluorescence -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-fluorescence-chk" disabled>
+                            <label for="ocean-fluorescence-chk">Fluorescence (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-fluorescence-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Dissolved Oxygen -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-oxygen-chk" disabled>
+                            <label for="ocean-oxygen-chk">Dissolved Oxygen (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-oxygen-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- pH -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-ph-chk" disabled>
+                            <label for="ocean-ph-chk">pH (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-ph-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Turbidity -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-turbidity-chk" disabled>
+                            <label for="ocean-turbidity-chk">Turbidity (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-turbidity-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Chlorophyll -->
+                    <div class="layer-entry">
+                        <div class="left">
+                            <input type="checkbox" id="ocean-chlorophyll-chk" disabled>
+                            <label for="ocean-chlorophyll-chk">Chlorophyll (connecting...)</label>
+                        </div>
+                        <input class="opacity" id="ocean-chlorophyll-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
+                    </div>
+                    
+                    <!-- Time Range Selector for Historical Data -->
+                    <div style="padding: 8px 0; border-top: 1px solid rgba(0,0,0,0.1); border-bottom: 1px solid rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 10px;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-weight: 500; font-size: 12px;">Time Range</label>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <div style="flex: 1;">
+                                <label for="ocean-start-datetime" style="display: block; font-size: 10px; color: #666; margin-bottom: 2px;">Start:</label>
+                                <input type="datetime-local" id="ocean-start-datetime" style="width: 100%; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label for="ocean-end-datetime" style="display: block; font-size: 10px; color: #666; margin-bottom: 2px;">End:</label>
+                                <input type="datetime-local" id="ocean-end-datetime" style="width: 100%; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+                            <button id="ocean-preset-1h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">1h</button>
+                            <button id="ocean-preset-6h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">6h</button>
+                            <button id="ocean-preset-12h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">12h</button>
+                            <button id="ocean-preset-24h" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">24h</button>
+                            <button id="ocean-preset-3d" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">3d</button>
+                            <button id="ocean-preset-7d" class="time-preset-btn" style="flex: 1; padding: 4px; font-size: 10px; cursor: pointer;">7d</button>
+                        </div>
+                        <button id="ocean-apply-range" style="width: 100%; padding: 6px; background: #4a90e2; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: 500; font-size: 12px; margin-bottom: 4px;">Apply Time Range</button>
+                        <div id="ocean-binning-info" style="font-size: 10px; color: #666; text-align: center;">Binning: 5 min</div>
+                    </div>
+                    
+                    <!-- Info Display -->
+                    <div class="layer-entry" style="font-size: 11px; color: #666; margin-top: 8px;">
+                        <div id="oceanographic-info">Last update: --</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -99,14 +563,69 @@
         <div id="legend-list">(toggle layers to populate legend)</div>
     </div>
 
+    <div id="coordinates-display">
+        <span id="coordinates-text">--</span>
+    </div>
+
+    <div id="rov-info-display">
+        <div class="info-display-title">ROV SuBastian</div>
+        <div>
+            <span id="rov-depth-text">Depth: --</span>
+            <span style="margin: 0 10px;">|</span>
+            <span id="rov-heading-text">Heading: --</span>
+        </div>
+    </div>
+
+    <div id="ship-info-display">
+        <div class="info-display-title">Falkor too</div>
+        <div>
+            <span id="ship-heading-text">Heading: --</span>
+            <span style="margin: 0 10px;">|</span>
+            <span id="ship-speed-text">Speed: --</span>
+        </div>
+    </div>
+
     <script src='https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.js'></script>
 
     <script>
-        // Coordinates for the Southern Ocean data
+        // Layer group management functions
+        function toggleLayerGroup(groupId) {
+            const group = document.getElementById(groupId);
+            if (group) {
+                group.classList.toggle('collapsed');
+            }
+        }
+
+        // Track all checkboxes by group
+        const layerCheckboxes = {
+            maps: [],
+            data: [],
+            gps: [],
+            adcp: [],
+            oceanographic: []
+        };
+
+        function toggleAllInGroup(groupName) {
+            const masterCheckbox = document.getElementById(`${groupName}-toggle-all`);
+            const isChecked = masterCheckbox.checked;
+            
+            layerCheckboxes[groupName].forEach(checkbox => {
+                if (!checkbox.disabled) {
+                    checkbox.checked = isChecked;
+                    // Trigger change event to update layer visibility
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        // Coordinates for the Southern Ocean data (fallback if no GPS available)
         const INITIAL_CENTER = [-61.9, -53.76]; 
         // Zoom level matching the center of your MBTiles data
         const INITIAL_ZOOM = 13; 
         const MAX_ZOOM = 18; // Set a high max zoom for deep dives
+
+        // Track if map has been centered on ship GPS
+        let mapCenteredOnShip = false;
 
         // 5. Initialize the MapLibre Map Object
         var map = new maplibregl.Map({
@@ -116,7 +635,7 @@
             // CRITICAL FIX: Pointing to your local style.json
             style: './style.json', 
             
-            // Initial camera position
+            // Initial camera position (will be updated by ship GPS if available)
             center: INITIAL_CENTER, 
             zoom: INITIAL_ZOOM,
             maxZoom: MAX_ZOOM
@@ -124,6 +643,19 @@
 
         // Optional: Add navigation controls (zoom in/out, compass)
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+        // Add mouse move listener to display coordinates
+        const coordinatesText = document.getElementById('coordinates-text');
+        map.on('mousemove', (e) => {
+            const lat = e.lngLat.lat.toFixed(6);
+            const lon = e.lngLat.lng.toFixed(6);
+            coordinatesText.textContent = `Lat: ${lat}°  Lon: ${lon}°`;
+        });
+
+        // Clear coordinates when mouse leaves map
+        map.on('mouseout', () => {
+            coordinatesText.textContent = '--';
+        });
 
         // Confirmation log when the map and all its sources/layers are loaded
         map.on('load', () => {
@@ -165,7 +697,7 @@
                                 maxzoom: srcMaxZoom
                             });
 
-                            // Add layer (above basemap, but below data layers from /layers/)
+                            // Add layer (above basemap, but below waypoints from /layers/)
                             map.addLayer({
                                 id: layerId,
                                 type: 'raster',
@@ -192,6 +724,9 @@
 
                             const checkbox = entry.querySelector(`#mbt-chk-${idx}`);
                             const slider = entry.querySelector(`#mbt-op-${idx}`);
+
+                            // Register checkbox for group toggle
+                            layerCheckboxes.maps.push(checkbox);
 
                             checkbox.addEventListener('change', () => {
                                 const vis = checkbox.checked ? 'visible' : 'none';
@@ -272,6 +807,13 @@
                     });
                     legendList.appendChild(item);
                 });
+                
+                // Add oceanographic layers to legend
+                updateOceanographicLegend();
+                
+                // Add ADCP layers to legend
+                updateADCPLegend();
+                
                 if (legendList.children.length===0) legendList.innerText = '(toggle layers to populate legend)';
             }
 
@@ -380,6 +922,9 @@
 
                     const checkbox = entry.querySelector(`#chk-${id}`);
                     const slider = entry.querySelector(`#op-${id}`);
+
+                    // Register checkbox for group toggle
+                    layerCheckboxes.data.push(checkbox);
 
                     // place a placeholder mapFiles entry so updateLegend won't error
                     mapFiles[id] = { name, checkbox, slider, color: null, geo: null, isGeoFile };
@@ -528,75 +1073,167 @@
             }); // End of mbtilesLoaded.then()
             
             // --- Live GPS Integration ---
-            let gpsWebSocket = null;
-            let gpsMarker = null;
-            let gpsTrailSource = null;
-            const gpsTrailCoordinates = [];
+            // Ship GPS variables
+            let gpsWebSocketShip = null;
+            let gpsMarkerShip = null;
+            const gpsTrailCoordinatesShip = [];
+            let markerUpdateSizeShip = null;
+            
+            // ROV GPS variables
+            let gpsWebSocketROV = null;
+            let gpsMarkerROV = null;
+            const gpsTrailCoordinatesROV = [];
+            let markerUpdateSizeROV = null;
+            
+            // ROV Telemetry WebSocket (separate from GPS for depth/heading)
+            let telemetryWebSocket = null;
+            
+            // Multibeam Swath WebSocket
+            let multibeamWebSocket = null;
+            const multibeamSources = {
+                EM124: null,
+                EM712: null,
+                EM2040: null
+            };
+            // Store historical swath lines for coverage visualization
+            const multibeamHistory = {
+                EM124: [],
+                EM712: [],
+                EM2040: []
+            };
+            const MAX_SWATH_LINES = 100; // Keep last 100 swath lines
+            
             const MAX_TRAIL_POINTS = 100;
             
-            function connectGPS() {
+            function connectShipGPS() {
                 const wsUrl = 'ws://localhost:8081';
                 const gpsList = document.getElementById('gps-list');
-                const checkbox = document.getElementById('gps-seapath-chk');
-                const slider = document.getElementById('gps-seapath-op');
-                const label = gpsList.querySelector('label[for="gps-seapath-chk"]');
+                const checkbox = document.getElementById('gps-ship-chk');
+                const slider = document.getElementById('gps-ship-op');
+                const label = gpsList.querySelector('label[for="gps-ship-chk"]');
+                const tracklineCheckbox = document.getElementById('gps-trackline-ship-chk');
                 
-                gpsWebSocket = new WebSocket(wsUrl);
+                // Register GPS checkboxes for group toggle
+                layerCheckboxes.gps.push(checkbox);
+                layerCheckboxes.gps.push(tracklineCheckbox);
                 
-                gpsWebSocket.onopen = () => {
-                    console.log('GPS WebSocket connected');
-                    label.textContent = 'Seapath (connected)';
+                gpsWebSocketShip = new WebSocket(wsUrl);
+                
+                gpsWebSocketShip.onopen = () => {
+                    console.log('[SHIP] GPS WebSocket connected');
+                    label.textContent = 'Ship (connected)';
                     checkbox.disabled = false;
                     slider.disabled = false;
-                    gpsList.querySelector('.layer-entry').style.opacity = '1';
+                    document.getElementById('gps-trackline-ship-chk').disabled = false;
                 };
                 
-                gpsWebSocket.onmessage = (event) => {
+                gpsWebSocketShip.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
                         
                         // Only process if we have valid lat/lon
                         if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
                         
-                        // Create or update marker
-                        if (!gpsMarker) {
-                            // Create vessel marker element
-                            const el = document.createElement('div');
-                            el.className = 'gps-marker';
-                            el.style.width = '24px';
-                            el.style.height = '24px';
-                            el.style.borderRadius = '50%';
-                            el.style.backgroundColor = '#ff4444';
-                            el.style.border = '3px solid white';
-                            el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-                            el.style.cursor = 'pointer';
-                            
-                            // Add heading indicator if available
+                        // Update ship info display
+                        const shipInfoDisplay = document.getElementById('ship-info-display');
+                        const shipHeadingText = document.getElementById('ship-heading-text');
+                        const shipSpeedText = document.getElementById('ship-speed-text');
+                        
+                        if (shipInfoDisplay && shipHeadingText && shipSpeedText) {
+                            // Update heading
                             if (Number.isFinite(data.course)) {
-                                const arrow = document.createElement('div');
-                                arrow.style.position = 'absolute';
-                                arrow.style.top = '-12px';
-                                arrow.style.left = '50%';
-                                arrow.style.transform = `translateX(-50%) rotate(${data.course}deg)`;
-                                arrow.style.width = '0';
-                                arrow.style.height = '0';
-                                arrow.style.borderLeft = '6px solid transparent';
-                                arrow.style.borderRight = '6px solid transparent';
-                                arrow.style.borderBottom = '12px solid #ff4444';
-                                el.appendChild(arrow);
+                                shipHeadingText.textContent = `Heading: ${data.course.toFixed(1)}°`;
+                            } else {
+                                shipHeadingText.textContent = 'Heading: --';
                             }
                             
-                            gpsMarker = new maplibregl.Marker({ element: el })
+                            // Update speed
+                            if (Number.isFinite(data.speed)) {
+                                shipSpeedText.textContent = `Speed: ${data.speed.toFixed(1)} kts`;
+                            } else {
+                                shipSpeedText.textContent = 'Speed: --';
+                            }
+                            
+                            // Show the display
+                            shipInfoDisplay.classList.add('active');
+                        }
+                        
+                        // Create or update marker
+                        if (!gpsMarkerShip) {
+                            // Create vessel marker element with custom image
+                            const el = document.createElement('div');
+                            el.className = 'gps-marker';
+                            el.style.cursor = 'pointer';
+                            el.style.display = 'flex';
+                            el.style.alignItems = 'center';
+                            el.style.justifyContent = 'center';
+                            
+                            // Add Falkor-too ship image
+                            const img = document.createElement('img');
+                            img.src = './vehicles/Falkor-too.png';
+                            img.style.width = '100%';
+                            img.style.height = '100%';
+                            img.style.objectFit = 'contain';
+                            img.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))';
+                            img.style.transformOrigin = 'center';
+                            img.id = 'vessel-heading-img';
+                            
+                            el.appendChild(img);
+                            
+                            // Function to scale marker based on zoom level
+                            markerUpdateSizeShip = () => {
+                                const zoom = map.getZoom();
+                                // Scale from 100px at zoom 10 to 240px at zoom 18 (at least 2x ROV size)
+                                const minSize = 100;
+                                const maxSize = 240;
+                                const minZoom = 10;
+                                const maxZoom = 18;
+                                const size = Math.min(maxSize, Math.max(minSize, 
+                                    minSize + (zoom - minZoom) * (maxSize - minSize) / (maxZoom - minZoom)));
+                                
+                                el.style.width = `${size}px`;
+                                el.style.height = `${size}px`;
+                                
+                                console.log(`GPS marker size updated: ${size}px at zoom ${zoom.toFixed(1)}`);
+                                
+                                // Maintain rotation if course data exists
+                                if (Number.isFinite(data.course)) {
+                                    // Add 90° to compensate for PNG default orientation (pointing west = 270°)
+                                    img.style.transform = `rotate(${data.course + 90}deg)`;
+                                }
+                            };
+                            
+                            // Initial size
+                            markerUpdateSizeShip();
+                            
+                            // Update size on zoom
+                            map.on('zoom', markerUpdateSizeShip);
+                            
+                            gpsMarkerShip = new maplibregl.Marker({ 
+                                element: el,
+                                anchor: 'center'
+                            })
                                 .setLngLat([data.lon, data.lat])
                                 .addTo(map);
                             
+                            // Center map on ship position on first GPS fix
+                            if (!mapCenteredOnShip) {
+                                map.flyTo({
+                                    center: [data.lon, data.lat],
+                                    zoom: 13,
+                                    duration: 2000
+                                });
+                                mapCenteredOnShip = true;
+                                console.log(`[SHIP] Map centered on ship position: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                            }
+                            
                             // Create popup with vessel info
                             const popup = new maplibregl.Popup({ offset: 15 })
-                                .setHTML(formatGPSPopup(data));
-                            gpsMarker.setPopup(popup);
+                                .setHTML(formatGPSPopup(data, 'Ship'));
+                            gpsMarkerShip.setPopup(popup);
                             
                             // Create trail source and layer
-                            gpsTrailSource = {
+                            map.addSource('gps-trail-ship', {
                                 type: 'geojson',
                                 data: {
                                     type: 'Feature',
@@ -605,13 +1242,11 @@
                                         coordinates: [[data.lon, data.lat]]
                                     }
                                 }
-                            };
-                            
-                            map.addSource('gps-trail', gpsTrailSource);
+                            });
                             map.addLayer({
-                                id: 'gps-trail-layer',
+                                id: 'gps-trail-ship-layer',
                                 type: 'line',
-                                source: 'gps-trail',
+                                source: 'gps-trail-ship',
                                 paint: {
                                     'line-color': '#ff4444',
                                     'line-width': 2,
@@ -619,86 +1254,324 @@
                                 }
                             });
                             
-                            gpsTrailCoordinates.push([data.lon, data.lat]);
+                            gpsTrailCoordinatesShip.push([data.lon, data.lat]);
                         } else {
                             // Update marker position
-                            gpsMarker.setLngLat([data.lon, data.lat]);
+                            gpsMarkerShip.setLngLat([data.lon, data.lat]);
                             
                             // Update popup content
-                            gpsMarker.getPopup().setHTML(formatGPSPopup(data));
+                            gpsMarkerShip.getPopup().setHTML(formatGPSPopup(data, 'Ship'));
                             
-                            // Update heading indicator if present
+                            // Update heading rotation if present
                             if (Number.isFinite(data.course)) {
-                                const arrow = gpsMarker.getElement().querySelector('div');
-                                if (arrow) {
-                                    arrow.style.transform = `translateX(-50%) rotate(${data.course}deg)`;
+                                const img = gpsMarkerShip.getElement().querySelector('#vessel-heading-img');
+                                if (img) {
+                                    // Add 90° to compensate for PNG default orientation (pointing west = 270°)
+                                    img.style.transform = `rotate(${data.course + 90}deg)`;
                                 }
                             }
                             
-                            // Update trail
-                            gpsTrailCoordinates.push([data.lon, data.lat]);
-                            if (gpsTrailCoordinates.length > MAX_TRAIL_POINTS) {
-                                gpsTrailCoordinates.shift();
+                            // Trigger size update to maintain scale
+                            if (markerUpdateSizeShip) {
+                                markerUpdateSizeShip();
                             }
                             
-                            if (map.getSource('gps-trail')) {
-                                map.getSource('gps-trail').setData({
+                            // Update trail
+                            gpsTrailCoordinatesShip.push([data.lon, data.lat]);
+                            if (gpsTrailCoordinatesShip.length > MAX_TRAIL_POINTS) {
+                                gpsTrailCoordinatesShip.shift();
+                            }
+                            
+                            if (map.getSource('gps-trail-ship')) {
+                                map.getSource('gps-trail-ship').setData({
                                     type: 'Feature',
                                     geometry: {
                                         type: 'LineString',
-                                        coordinates: gpsTrailCoordinates
+                                        coordinates: gpsTrailCoordinatesShip
                                     }
                                 });
                             }
                         }
                         
-                        console.log(`GPS Update: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                        console.log(`[SHIP] GPS Update: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
                     } catch (err) {
                         console.error('GPS data parse error:', err);
                     }
                 };
                 
-                gpsWebSocket.onerror = (err) => {
-                    console.error('GPS WebSocket error:', err);
-                    label.textContent = 'Seapath (error)';
+                gpsWebSocketShip.onerror = (err) => {
+                    console.error('[SHIP] GPS WebSocket error:', err);
+                    label.textContent = 'Ship (error)';
+                    // Hide ship info display on error
+                    const shipInfoDisplay = document.getElementById('ship-info-display');
+                    if (shipInfoDisplay) {
+                        shipInfoDisplay.classList.remove('active');
+                    }
                 };
                 
-                gpsWebSocket.onclose = () => {
-                    console.log('GPS WebSocket disconnected');
-                    label.textContent = 'Seapath (disconnected)';
+                gpsWebSocketShip.onclose = () => {
+                    console.log('[SHIP] GPS WebSocket disconnected');
+                    label.textContent = 'Ship (disconnected)';
                     checkbox.disabled = true;
                     slider.disabled = true;
-                    gpsList.querySelector('.layer-entry').style.opacity = '0.7';
-                    
+                    // Hide ship info display on disconnect
+                    const shipInfoDisplay = document.getElementById('ship-info-display');
+                    if (shipInfoDisplay) {
+                        shipInfoDisplay.classList.remove('active');
+                    }
                     // Attempt reconnect after 5 seconds
-                    setTimeout(connectGPS, 5000);
+                    setTimeout(connectShipGPS, 5000);
                 };
                 
-                // Checkbox controls visibility
+                // Main checkbox controls vessel marker visibility
                 checkbox.addEventListener('change', () => {
-                    if (gpsMarker) {
-                        gpsMarker.getElement().style.display = checkbox.checked ? 'block' : 'none';
+                    if (gpsMarkerShip) {
+                        gpsMarkerShip.getElement().style.display = checkbox.checked ? 'block' : 'none';
                     }
-                    if (map.getLayer('gps-trail-layer')) {
-                        map.setLayoutProperty('gps-trail-layer', 'visibility', checkbox.checked ? 'visible' : 'none');
+                });
+                
+                // Trackline checkbox controls trail visibility independently
+                tracklineCheckbox.addEventListener('change', () => {
+                    if (map.getLayer('gps-trail-ship-layer')) {
+                        map.setLayoutProperty('gps-trail-ship-layer', 'visibility', 
+                            tracklineCheckbox.checked ? 'visible' : 'none');
                     }
                 });
                 
                 // Slider controls opacity
                 slider.addEventListener('input', () => {
                     const opacity = parseFloat(slider.value);
-                    if (gpsMarker) {
-                        gpsMarker.getElement().style.opacity = opacity.toString();
+                    if (gpsMarkerShip) {
+                        gpsMarkerShip.getElement().style.opacity = opacity.toString();
                     }
-                    if (map.getLayer('gps-trail-layer')) {
-                        map.setPaintProperty('gps-trail-layer', 'line-opacity', opacity * 0.6);
+                    if (map.getLayer('gps-trail-ship-layer')) {
+                        map.setPaintProperty('gps-trail-ship-layer', 'line-opacity', opacity * 0.6);
                     }
                 });
             }
             
-            function formatGPSPopup(data) {
+            // ROV GPS marker connection function
+            function connectROVGPS() {
+                const wsUrl = 'ws://localhost:8082';
+                const gpsList = document.getElementById('gps-list');
+                const checkbox = document.getElementById('gps-rov-chk');
+                const slider = document.getElementById('gps-rov-op');
+                const label = gpsList.querySelector('label[for="gps-rov-chk"]');
+                const tracklineCheckbox = document.getElementById('gps-trackline-rov-chk');
+                
+                // Register GPS checkboxes for group toggle
+                layerCheckboxes.gps.push(checkbox);
+                layerCheckboxes.gps.push(tracklineCheckbox);
+                
+                gpsWebSocketROV = new WebSocket(wsUrl);
+                
+                gpsWebSocketROV.onopen = () => {
+                    console.log('[ROV] GPS WebSocket connected');
+                    label.textContent = 'ROV (connected)';
+                    checkbox.disabled = false;
+                    checkbox.checked = true; // Check by default when connected
+                    slider.disabled = false;
+                    document.getElementById('gps-trackline-rov-chk').disabled = false;
+                    
+                    // Start telemetry connection for depth/heading
+                    connectROVTelemetry();
+                };
+                
+                gpsWebSocketROV.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[ROV] GPS data received:', data);
+                        
+                        // Only process if we have valid lat/lon
+                        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) {
+                            console.warn('[ROV] Invalid lat/lon:', data.lat, data.lon);
+                            return;
+                        }
+                        
+                        // Create or update marker
+                        if (!gpsMarkerROV) {
+                            console.log('[ROV] Creating GPS marker at:', data.lat, data.lon);
+                            // Create ROV marker element with custom image
+                            const el = document.createElement('div');
+                            el.className = 'gps-marker';
+                            el.style.cursor = 'pointer';
+                            el.style.display = 'flex';
+                            el.style.alignItems = 'center';
+                            el.style.justifyContent = 'center';
+                            
+                            // Add ROV image (smaller than ship)
+                            const img = document.createElement('img');
+                            img.src = './vehicles/rov.png';
+                            img.style.width = '100%';
+                            img.style.height = '100%';
+                            img.style.objectFit = 'contain';
+                            img.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))';
+                            img.style.transformOrigin = 'center';
+                            img.id = 'rov-heading-img';
+                            
+                            el.appendChild(img);
+                            
+                            // Function to scale marker based on zoom level (smaller than ship)
+                            markerUpdateSizeROV = () => {
+                                const zoom = map.getZoom();
+                                // Scale from 40px at zoom 10 to 120px at zoom 18 (smaller than ship)
+                                const minSize = 40;
+                                const maxSize = 120;
+                                const minZoom = 10;
+                                const maxZoom = 18;
+                                const size = Math.min(maxSize, Math.max(minSize, 
+                                    minSize + (zoom - minZoom) * (maxSize - minSize) / (maxZoom - minZoom)));
+                                
+                                el.style.width = `${size}px`;
+                                el.style.height = `${size}px`;
+                                
+                                console.log(`[ROV] GPS marker size updated: ${size}px at zoom ${zoom.toFixed(1)}`);
+                                
+                                // Maintain rotation if course data exists
+                                if (Number.isFinite(data.course)) {
+                                    // ROV PNG points east (90°), so no offset needed
+                                    img.style.transform = `rotate(${data.course}deg)`;
+                                }
+                            };
+                            
+                            // Initial size
+                            markerUpdateSizeROV();
+                            
+                            // Update size on zoom
+                            map.on('zoom', markerUpdateSizeROV);
+                            
+                            gpsMarkerROV = new maplibregl.Marker({ 
+                                element: el,
+                                anchor: 'center'
+                            })
+                                .setLngLat([data.lon, data.lat])
+                                .addTo(map);
+                            
+                            // Set initial visibility based on checkbox state
+                            el.style.display = checkbox.checked ? 'flex' : 'none';
+                            
+                            // Create popup with ROV info
+                            const popup = new maplibregl.Popup({ offset: 15 })
+                                .setHTML(formatGPSPopup(data, 'ROV'));
+                            gpsMarkerROV.setPopup(popup);
+                            
+                            // Create trail source and layer (green for ROV)
+                            map.addSource('gps-trail-rov', {
+                                type: 'geojson',
+                                data: {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: [[data.lon, data.lat]]
+                                    }
+                                }
+                            });
+                            map.addLayer({
+                                id: 'gps-trail-rov-layer',
+                                type: 'line',
+                                source: 'gps-trail-rov',
+                                paint: {
+                                    'line-color': '#44ff44',
+                                    'line-width': 2,
+                                    'line-opacity': 0.6
+                                }
+                            });
+                            
+                            gpsTrailCoordinatesROV.push([data.lon, data.lat]);
+                        } else {
+                            // Update marker position
+                            gpsMarkerROV.setLngLat([data.lon, data.lat]);
+                            
+                            // Update popup content
+                            gpsMarkerROV.getPopup().setHTML(formatGPSPopup(data, 'ROV'));
+                            
+                            // Update heading rotation if present (from GPS course data)
+                            if (Number.isFinite(data.course)) {
+                                const img = gpsMarkerROV.getElement().querySelector('#rov-heading-img');
+                                if (img) {
+                                    // ROV PNG points east (90°), so no offset needed
+                                    img.style.transform = `rotate(${data.course}deg)`;
+                                }
+                            }
+                            
+                            // Note: Depth and heading display is now handled by separate telemetry server
+                            
+                            // Trigger size update to maintain scale
+                            if (markerUpdateSizeROV) {
+                                markerUpdateSizeROV();
+                            }
+                            
+                            // Update trail
+                            gpsTrailCoordinatesROV.push([data.lon, data.lat]);
+                            if (gpsTrailCoordinatesROV.length > MAX_TRAIL_POINTS) {
+                                gpsTrailCoordinatesROV.shift();
+                            }
+                            
+                            if (map.getSource('gps-trail-rov')) {
+                                map.getSource('gps-trail-rov').setData({
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: gpsTrailCoordinatesROV
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`[ROV] GPS Update: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                    } catch (err) {
+                        console.error('[ROV] GPS data parse error:', err);
+                    }
+                };
+                
+                gpsWebSocketROV.onerror = (err) => {
+                    console.error('[ROV] GPS WebSocket error:', err);
+                    label.textContent = 'ROV (error)';
+                };
+                
+                gpsWebSocketROV.onclose = () => {
+                    console.log('[ROV] GPS WebSocket disconnected');
+                    label.textContent = 'ROV (disconnected)';
+                    checkbox.disabled = true;
+                    slider.disabled = true;
+                    
+                    // Stop telemetry connection
+                    disconnectROVTelemetry();
+                    
+                    // Attempt reconnect after 5 seconds
+                    setTimeout(connectROVGPS, 5000);
+                };
+                
+                // Main checkbox controls ROV marker visibility
+                checkbox.addEventListener('change', () => {
+                    if (gpsMarkerROV) {
+                        gpsMarkerROV.getElement().style.display = checkbox.checked ? 'block' : 'none';
+                    }
+                });
+                
+                // Trackline checkbox controls trail visibility independently
+                tracklineCheckbox.addEventListener('change', () => {
+                    if (map.getLayer('gps-trail-rov-layer')) {
+                        map.setLayoutProperty('gps-trail-rov-layer', 'visibility', 
+                            tracklineCheckbox.checked ? 'visible' : 'none');
+                    }
+                });
+                
+                // Slider controls opacity
+                slider.addEventListener('input', () => {
+                    const opacity = parseFloat(slider.value);
+                    if (gpsMarkerROV) {
+                        gpsMarkerROV.getElement().style.opacity = opacity.toString();
+                    }
+                    if (map.getLayer('gps-trail-rov-layer')) {
+                        map.setPaintProperty('gps-trail-rov-layer', 'line-opacity', opacity * 0.6);
+                    }
+                });
+            }
+            
+            function formatGPSPopup(data, vehicleName) {
                 let html = '<div style="font-family: monospace; font-size: 12px;">';
-                html += `<b>Seapath Navigation</b><br>`;
+                html += `<b>${vehicleName} Navigation</b><br>`;
                 html += `<b>Position:</b> ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}<br>`;
                 if (Number.isFinite(data.speed)) html += `<b>Speed:</b> ${data.speed.toFixed(1)} kts<br>`;
                 if (Number.isFinite(data.course)) html += `<b>Course:</b> ${data.course.toFixed(1)}°<br>`;
@@ -710,9 +1583,1348 @@
                 return html;
             }
             
-            // Connect to GPS server when map loads
-            connectGPS();
+            // Connect to GPS servers when map loads
+            connectShipGPS();
+            connectROVGPS();
             // --- End GPS integration ---
+            
+            // Connect to multibeam server when map loads
+            connectMultibeam();
+
+            // --- ROV Telemetry Integration (depth, heading from InfluxDB) ---
+            function connectROVTelemetry() {
+                const wsUrl = 'ws://localhost:8084';
+                const rovInfoDisplay = document.getElementById('rov-info-display');
+                
+                if (telemetryWebSocket) {
+                    console.log('[Telemetry] WebSocket already connected');
+                    return;
+                }
+                
+                telemetryWebSocket = new WebSocket(wsUrl);
+                
+                telemetryWebSocket.onopen = () => {
+                    console.log('[Telemetry] WebSocket connected');
+                    if (rovInfoDisplay) {
+                        rovInfoDisplay.classList.add('active');
+                    }
+                };
+                
+                telemetryWebSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Update depth display
+                        const rovDepthText = document.getElementById('rov-depth-text');
+                        if (rovDepthText && data.depth !== null && Number.isFinite(data.depth)) {
+                            rovDepthText.textContent = `Depth: ${data.depth.toFixed(1)}m`;
+                        } else if (rovDepthText) {
+                            rovDepthText.textContent = 'Depth: --';
+                        }
+                        
+                        // Update heading display
+                        const rovHeadingText = document.getElementById('rov-heading-text');
+                        if (rovHeadingText && data.heading !== null && Number.isFinite(data.heading)) {
+                            rovHeadingText.textContent = `Heading: ${data.heading.toFixed(1)}°`;
+                        } else if (rovHeadingText) {
+                            rovHeadingText.textContent = 'Heading: --';
+                        }
+                        
+                        // Optional: Update ROV marker rotation with heading from telemetry
+                        if (gpsMarkerROV && data.heading !== null && Number.isFinite(data.heading)) {
+                            const img = gpsMarkerROV.getElement().querySelector('#rov-heading-img');
+                            if (img) {
+                                // ROV PNG points east (90°), so no offset needed
+                                img.style.transform = `rotate(${data.heading}deg)`;
+                            }
+                        }
+                        
+                        console.log(`[Telemetry] Depth: ${data.depth}m, Heading: ${data.heading}°`);
+                    } catch (err) {
+                        console.error('[Telemetry] Data parse error:', err);
+                    }
+                };
+                
+                telemetryWebSocket.onerror = (err) => {
+                    console.error('[Telemetry] WebSocket error:', err);
+                };
+                
+                telemetryWebSocket.onclose = () => {
+                    console.log('[Telemetry] WebSocket disconnected');
+                    telemetryWebSocket = null;
+                    
+                    if (rovInfoDisplay) {
+                        rovInfoDisplay.classList.remove('active');
+                        // Reset display text
+                        const rovDepthText = document.getElementById('rov-depth-text');
+                        const rovHeadingText = document.getElementById('rov-heading-text');
+                        if (rovDepthText) rovDepthText.textContent = 'Depth: --';
+                        if (rovHeadingText) rovHeadingText.textContent = 'Heading: --';
+                    }
+                    
+                    // Attempt reconnect after 5 seconds if ROV GPS is still active
+                    if (gpsWebSocketROV && gpsWebSocketROV.readyState === WebSocket.OPEN) {
+                        console.log('[Telemetry] Reconnecting in 5 seconds...');
+                        setTimeout(connectROVTelemetry, 5000);
+                    }
+                };
+            }
+            
+            function disconnectROVTelemetry() {
+                if (telemetryWebSocket) {
+                    console.log('[Telemetry] Closing WebSocket connection');
+                    telemetryWebSocket.close();
+                    telemetryWebSocket = null;
+                }
+            }
+            // --- End ROV Telemetry Integration ---
+
+            // --- Multibeam Swath Integration ---
+            const MULTIBEAM_SYSTEMS = {
+                EM124: {
+                    name: 'EM 124',
+                    color: '#3b82f6',
+                    fillColor: 'rgba(59, 130, 246, 0.3)'
+                },
+                EM712: {
+                    name: 'EM 712',
+                    color: '#10b981',
+                    fillColor: 'rgba(16, 185, 129, 0.3)'
+                },
+                EM2040: {
+                    name: 'EM 2040',
+                    color: '#f59e0b',
+                    fillColor: 'rgba(245, 158, 11, 0.3)'
+                }
+            };
+            
+            function connectMultibeam() {
+                const wsUrl = 'ws://localhost:8085';
+                const multibeamList = document.getElementById('multibeam-list');
+                
+                // Get checkboxes and sliders for each system
+                const controls = {
+                    EM124: {
+                        checkbox: document.getElementById('multibeam-em124-chk'),
+                        slider: document.getElementById('multibeam-em124-op'),
+                        label: multibeamList.querySelector('label[for="multibeam-em124-chk"]')
+                    },
+                    EM712: {
+                        checkbox: document.getElementById('multibeam-em712-chk'),
+                        slider: document.getElementById('multibeam-em712-op'),
+                        label: multibeamList.querySelector('label[for="multibeam-em712-chk"]')
+                    },
+                    EM2040: {
+                        checkbox: document.getElementById('multibeam-em2040-chk'),
+                        slider: document.getElementById('multibeam-em2040-op'),
+                        label: multibeamList.querySelector('label[for="multibeam-em2040-chk"]')
+                    }
+                };
+                
+                // Register checkboxes for group toggle
+                layerCheckboxes.multibeam = [];
+                Object.values(controls).forEach(c => layerCheckboxes.multibeam.push(c.checkbox));
+                
+                multibeamWebSocket = new WebSocket(wsUrl);
+                
+                multibeamWebSocket.onopen = () => {
+                    console.log('[Multibeam] WebSocket connected');
+                    
+                    // Enable all controls
+                    Object.entries(controls).forEach(([systemId, ctrl]) => {
+                        ctrl.label.textContent = `${MULTIBEAM_SYSTEMS[systemId].name} (connected)`;
+                        ctrl.checkbox.disabled = false;
+                        ctrl.slider.disabled = false;
+                    });
+                };
+                
+                multibeamWebSocket.onmessage = (event) => {
+                    try {
+                        const swaths = JSON.parse(event.data);
+                        
+                        // Update each system's swath
+                        Object.entries(swaths).forEach(([systemId, swathData]) => {
+                            if (!swathData.active || !swathData.line) return;
+                            
+                            const sourceId = `multibeam-${systemId.toLowerCase()}`;
+                            const layerId = `${sourceId}-layer`;
+                            const config = MULTIBEAM_SYSTEMS[systemId];
+                            
+                            // Add new line to history
+                            multibeamHistory[systemId].push({
+                                line: swathData.line,
+                                timestamp: swathData.timestamp,
+                                depth: swathData.depth,
+                                swathWidth: swathData.swathWidth
+                            });
+                            
+                            // Keep only the last MAX_SWATH_LINES
+                            if (multibeamHistory[systemId].length > MAX_SWATH_LINES) {
+                                multibeamHistory[systemId].shift();
+                            }
+                            
+                            // Create MultiLineString from all historical lines
+                            const allLines = multibeamHistory[systemId].map(h => h.line);
+                            
+                            // Create or update source
+                            if (!map.getSource(sourceId)) {
+                                map.addSource(sourceId, {
+                                    type: 'geojson',
+                                    data: {
+                                        type: 'Feature',
+                                        geometry: {
+                                            type: 'MultiLineString',
+                                            coordinates: allLines
+                                        },
+                                        properties: {
+                                            system: systemId,
+                                            lineCount: allLines.length
+                                        }
+                                    }
+                                });
+                                
+                                // Add line layer (thin lines showing historical coverage)
+                                map.addLayer({
+                                    id: layerId,
+                                    type: 'line',
+                                    source: sourceId,
+                                    paint: {
+                                        'line-color': config.color,
+                                        'line-width': 2,
+                                        'line-opacity': 0.6
+                                    }
+                                });
+                                
+                                multibeamSources[systemId] = sourceId;
+                            } else {
+                                // Update existing source with all historical lines
+                                map.getSource(sourceId).setData({
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'MultiLineString',
+                                        coordinates: allLines
+                                    },
+                                    properties: {
+                                        system: systemId,
+                                        lineCount: allLines.length
+                                    }
+                                });
+                            }
+                            
+                            // Update label with depth info and line count
+                            const ctrl = controls[systemId];
+                            if (ctrl) {
+                                ctrl.label.textContent = `${config.name} (${swathData.depth.toFixed(0)}m, ${allLines.length} lines)`;
+                            }
+                        });
+                        
+                        // Hide systems that are not active
+                        Object.keys(MULTIBEAM_SYSTEMS).forEach(systemId => {
+                            if (!swaths[systemId] || !swaths[systemId].active) {
+                                const layerId = `multibeam-${systemId.toLowerCase()}-layer`;
+                                
+                                const ctrl = controls[systemId];
+                                if (ctrl) {
+                                    const lineCount = multibeamHistory[systemId].length;
+                                    ctrl.label.textContent = `${MULTIBEAM_SYSTEMS[systemId].name} (inactive, ${lineCount} lines)`;
+                                }
+                            } else {
+                                const layerId = `multibeam-${systemId.toLowerCase()}-layer`;
+                                const ctrl = controls[systemId];
+                                if (map.getLayer(layerId) && ctrl && ctrl.checkbox.checked) {
+                                    map.setLayoutProperty(layerId, 'visibility', 'visible');
+                                } else if (map.getLayer(layerId)) {
+                                    map.setLayoutProperty(layerId, 'visibility', 'none');
+                                }
+                            }
+                        });
+                        
+                        console.log('[Multibeam] Swaths updated:', Object.keys(swaths).filter(s => swaths[s].active));
+                    } catch (err) {
+                        console.error('[Multibeam] Data parse error:', err);
+                    }
+                };
+                
+                multibeamWebSocket.onerror = (err) => {
+                    console.error('[Multibeam] WebSocket error:', err);
+                    Object.values(controls).forEach(ctrl => {
+                        ctrl.label.textContent = ctrl.label.textContent.replace('(connected)', '(error)');
+                    });
+                };
+                
+                multibeamWebSocket.onclose = () => {
+                    console.log('[Multibeam] WebSocket disconnected');
+                    Object.entries(controls).forEach(([systemId, ctrl]) => {
+                        ctrl.label.textContent = `${MULTIBEAM_SYSTEMS[systemId].name} (disconnected)`;
+                        ctrl.checkbox.disabled = true;
+                        ctrl.slider.disabled = true;
+                    });
+                    
+                    // Attempt reconnect after 5 seconds
+                    setTimeout(connectMultibeam, 5000);
+                };
+                
+                // Add checkbox event listeners
+                Object.entries(controls).forEach(([systemId, ctrl]) => {
+                    ctrl.checkbox.addEventListener('change', () => {
+                        const layerId = `multibeam-${systemId.toLowerCase()}-layer`;
+                        if (map.getLayer(layerId)) {
+                            const visibility = ctrl.checkbox.checked ? 'visible' : 'none';
+                            map.setLayoutProperty(layerId, 'visibility', visibility);
+                        }
+                    });
+                    
+                    ctrl.slider.addEventListener('input', () => {
+                        const layerId = `multibeam-${systemId.toLowerCase()}-layer`;
+                        if (map.getLayer(layerId)) {
+                            map.setPaintProperty(layerId, 'line-opacity', parseFloat(ctrl.slider.value));
+                        }
+                    });
+                });
+            }
+            // --- End Multibeam Integration ---
+
+            // --- ADCP Current Vectors Integration ---
+            let adcpWebSocket = null;
+            let adcpVectorsByDepth = {}; // Store vectors by depth range
+            const ARROW_BASE_LENGTH = 0.001; // Base length in degrees (~111m at equator)
+            
+            // Color mapping for each depth range (visible on blue background)
+            const ADCP_DEPTH_COLORS = {
+                '0-25': '#ff6b6b',      // Red
+                '25-50': '#ffa502',     // Orange
+                '50-150': '#2ed573',    // Green
+                '150-300': '#000000',   // Black
+                '300-500': '#a29bfe',   // Light Purple
+                '>500': '#fd79a8'       // Pink
+            };
+            
+            function connectADCP() {
+                const wsUrl = 'ws://localhost:8083';
+                const infoDiv = document.getElementById('adcp-info');
+                
+                // Get all depth checkboxes
+                const depthCheckboxes = [
+                    { id: 'adcp-depth-0-25-chk', depth: '0-25', instrument: 'WH300' },
+                    { id: 'adcp-depth-25-50-chk', depth: '25-50', instrument: 'WH300' },
+                    { id: 'adcp-depth-50-150-chk', depth: '50-150', instrument: 'EC150' },
+                    { id: 'adcp-depth-150-300-chk', depth: '150-300', instrument: 'EC150' },
+                    { id: 'adcp-depth-300-500-chk', depth: '300-500', instrument: 'OS38' },
+                    { id: 'adcp-depth-500plus-chk', depth: '>500', instrument: 'OS38' }
+                ];
+                
+                // Register all checkboxes for group toggle
+                depthCheckboxes.forEach(config => {
+                    const checkbox = document.getElementById(config.id);
+                    if (checkbox) {
+                        layerCheckboxes.adcp.push(checkbox);
+                    }
+                });
+                
+                adcpWebSocket = new WebSocket(wsUrl);
+                
+                adcpWebSocket.onopen = () => {
+                    console.log('[ADCP] WebSocket connected');
+                    
+                    // Enable all depth checkboxes and sliders
+                    depthCheckboxes.forEach(config => {
+                        const checkbox = document.getElementById(config.id);
+                        const slider = document.getElementById(config.id.replace('-chk', '-op'));
+                        const label = checkbox ? checkbox.nextElementSibling : null;
+                        
+                        if (checkbox) {
+                            checkbox.disabled = false;
+                            if (label) label.textContent = `${config.depth}m (connected)`;
+                        }
+                        if (slider) slider.disabled = false;
+                        
+                        // Add event listeners
+                        if (checkbox) {
+                            checkbox.addEventListener('change', () => {
+                                if (!checkbox.checked) {
+                                    // Hide layer immediately when unchecked
+                                    hideADCPLayer(config.depth);
+                                }
+                                // Update legend when checkbox state changes
+                                updateADCPLegend();
+                                // Note: When checked, data will be requested via Apply button
+                            });
+                        }
+                        
+                        if (slider) {
+                            slider.addEventListener('input', () => {
+                                updateADCPLayerOpacity(config.depth, parseFloat(slider.value));
+                            });
+                        }
+                    });
+                };
+                
+                adcpWebSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        const depthRange = data.depthRange;
+                        
+                        console.log(`[ADCP] Received ${data.vectors ? data.vectors.length : 0} vectors for depth ${depthRange}`);
+                        
+                        // Store vectors by depth range
+                        adcpVectorsByDepth[depthRange] = data.vectors || [];
+                        
+                        // Update the layer for this depth range
+                        updateADCPLayerForDepth(depthRange);
+                        
+                        // Update legend when data is displayed
+                        updateADCPLegend();
+                        
+                        // Update info display
+                        const timestamp = new Date(data.timestamp).toLocaleString();
+                        const totalVectors = Object.values(adcpVectorsByDepth).reduce((sum, vecs) => sum + vecs.length, 0);
+                        infoDiv.textContent = `Last update: ${timestamp} | ${totalVectors} total vectors`;
+                        
+                    } catch (err) {
+                        console.error('[ADCP] Error parsing data:', err);
+                    }
+                };
+                
+                adcpWebSocket.onerror = (err) => {
+                    console.error('[ADCP] WebSocket error:', err);
+                    depthCheckboxes.forEach(config => {
+                        const checkbox = document.getElementById(config.id);
+                        const label = checkbox ? checkbox.nextElementSibling : null;
+                        if (label) label.textContent = `${config.depth}m (error)`;
+                    });
+                };
+                
+                adcpWebSocket.onclose = () => {
+                    console.log('[ADCP] WebSocket disconnected');
+                    depthCheckboxes.forEach(config => {
+                        const checkbox = document.getElementById(config.id);
+                        const slider = document.getElementById(config.id.replace('-chk', '-op'));
+                        const label = checkbox ? checkbox.nextElementSibling : null;
+                        
+                        if (checkbox) checkbox.disabled = true;
+                        if (slider) slider.disabled = true;
+                        if (label) label.textContent = `${config.depth}m (disconnected)`;
+                    });
+                    // Attempt reconnect after 5 seconds
+                    setTimeout(connectADCP, 5000);
+                };
+                
+                // Function to request data for a specific depth range
+                function requestADCPDataForDepth(depthRange, instrument) {
+                    if (adcpWebSocket && adcpWebSocket.readyState === WebSocket.OPEN) {
+                        const startInput = document.getElementById('adcp-start-datetime');
+                        const endInput = document.getElementById('adcp-end-datetime');
+                        const start = new Date(startInput.value);
+                        const end = new Date(endInput.value);
+                        const binning = calculateBinning(start, end);
+                        
+                        const request = {
+                            type: 'request',
+                            startTime: start.toISOString(),
+                            endTime: end.toISOString(),
+                            depthRange: depthRange,
+                            instrument: instrument,
+                            binning: binning
+                        };
+                        
+                        console.log(`[ADCP] Requesting data for depth ${depthRange}:`, request);
+                        adcpWebSocket.send(JSON.stringify(request));
+                    }
+                }
+                
+                // Hide layer for specific depth range
+                function hideADCPLayer(depthRange) {
+                    const layerId = `adcp-arrows-${depthRange.replace(/>/, 'plus')}`;
+                    if (map.getLayer(layerId)) {
+                        map.setLayoutProperty(layerId, 'visibility', 'none');
+                    }
+                }
+                
+                // Update opacity for specific depth range
+                function updateADCPLayerOpacity(depthRange, opacity) {
+                    const layerId = `adcp-arrows-${depthRange.replace(/>/, 'plus')}`;
+                    if (map.getLayer(layerId)) {
+                        map.setPaintProperty(layerId, 'icon-opacity', opacity);
+                    }
+                }
+            }
+            
+            function updateADCPLayerForDepth(depthRange) {
+                const sourceId = `adcp-vectors-${depthRange.replace(/>/, 'plus')}`;
+                const layerId = `adcp-arrows-${depthRange.replace(/>/, 'plus')}`;
+                const vectors = adcpVectorsByDepth[depthRange] || [];
+                const color = ADCP_DEPTH_COLORS[depthRange] || '#1e3a8a';
+                
+                // Load arrow image if not already loaded
+                if (!map.hasImage('arrow')) {
+                    loadArrowImage();
+                }
+                
+                // Create or update source
+                if (!map.getSource(sourceId)) {
+                    map.addSource(sourceId, {
+                        type: 'geojson',
+                        data: {
+                            type: 'FeatureCollection',
+                            features: []
+                        }
+                    });
+                }
+                
+                // Create layer if it doesn't exist
+                if (!map.getLayer(layerId)) {
+                    map.addLayer({
+                        id: layerId,
+                        type: 'symbol',
+                        source: sourceId,
+                        layout: {
+                            'icon-image': 'arrow',
+                            'icon-size': ['get', 'arrowSize'],
+                            'icon-rotate': ['get', 'direction'],
+                            'icon-rotation-alignment': 'map',
+                            'icon-allow-overlap': true,
+                            'icon-ignore-placement': true
+                        },
+                        paint: {
+                            'icon-color': color,
+                            'icon-opacity': 1
+                        }
+                    });
+                }
+                
+                // Convert vectors to GeoJSON features
+                const features = vectors.map(v => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [v.lon, v.lat]
+                    },
+                    properties: {
+                        direction: v.direction,
+                        speed: v.speed,
+                        u: v.u,
+                        v: v.v,
+                        depth: v.depth,
+                        quality: v.quality,
+                        time: v.time,
+                        // Scale arrow size based on speed (longer arrows = faster currents)
+                        arrowSize: 0.3 + (v.speed * 0.5) // Size increases with speed
+                    }
+                }));
+                
+                map.getSource(sourceId).setData({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+                
+                // Make layer visible
+                map.setLayoutProperty(layerId, 'visibility', 'visible');
+                
+                console.log(`[ADCP] Updated layer ${layerId} with ${features.length} arrows in color ${color}`);
+            }
+            
+            function loadArrowImage() {
+                // Create arrow SVG
+                const arrowSvg = `
+                    <svg width="40" height="80" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <filter id="shadow">
+                                <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+                            </filter>
+                        </defs>
+                        <g filter="url(#shadow)">
+                            <!-- Arrow shaft -->
+                            <line x1="20" y1="70" x2="20" y2="15" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                            <!-- Arrow head -->
+                            <polygon points="20,5 10,20 20,15 30,20" fill="currentColor"/>
+                        </g>
+                    </svg>
+                `;
+                
+                const img = new Image(40, 80);
+                img.onload = () => {
+                    map.addImage('arrow', img);
+                    console.log('[ADCP] Arrow image loaded');
+                };
+                img.src = 'data:image/svg+xml;base64,' + btoa(arrowSvg);
+            }
+            
+            // ADCP datetime picker setup
+            function setupADCPDateTimePicker() {
+                const startInput = document.getElementById('adcp-start-datetime');
+                const endInput = document.getElementById('adcp-end-datetime');
+                const applyBtn = document.getElementById('adcp-apply-range');
+                
+                // Set default to last 6 hours
+                const now = new Date();
+                const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+                
+                startInput.value = formatDateTimeLocal(sixHoursAgo);
+                endInput.value = formatDateTimeLocal(now);
+                
+                // Preset buttons
+                const presets = [
+                    { id: 'adcp-preset-1h', hours: 1 },
+                    { id: 'adcp-preset-6h', hours: 6 },
+                    { id: 'adcp-preset-12h', hours: 12 },
+                    { id: 'adcp-preset-24h', hours: 24 },
+                    { id: 'adcp-preset-3d', hours: 72 },
+                    { id: 'adcp-preset-7d', hours: 168 }
+                ];
+                
+                presets.forEach(preset => {
+                    document.getElementById(preset.id).addEventListener('click', () => {
+                        // Always use current time as end, and calculate start from now
+                        const end = new Date();
+                        const start = new Date(end.getTime() - preset.hours * 60 * 60 * 1000);
+                        startInput.value = formatDateTimeLocal(start);
+                        endInput.value = formatDateTimeLocal(end);
+                        
+                        // Update binning info
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('adcp', binning);
+                        
+                        // Highlight active preset
+                        document.querySelectorAll('.time-preset-btn').forEach(btn => {
+                            if (btn.id.startsWith('adcp-preset-')) btn.classList.remove('active');
+                        });
+                        document.getElementById(preset.id).classList.add('active');
+                    });
+                });
+                
+                // Apply button
+                applyBtn.addEventListener('click', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                        alert('Please select valid start and end times');
+                        return;
+                    }
+                    
+                    if (start >= end) {
+                        alert('Start time must be before end time');
+                        return;
+                    }
+                    
+                    const binning = calculateBinning(start, end);
+                    updateBinningInfo('adcp', binning);
+                    
+                    // Send request for all checked depth ranges
+                    if (adcpWebSocket && adcpWebSocket.readyState === WebSocket.OPEN) {
+                        depthCheckboxes.forEach(config => {
+                            const checkbox = document.getElementById(`adcp-depth-${config.depth}-chk`);
+                            if (checkbox && checkbox.checked) {
+                                requestADCPDataForDepth(config.depth, config.instrument);
+                            }
+                        });
+                        console.log(`[ADCP] Requesting data from ${start.toISOString()} to ${end.toISOString()} with ${binning} binning for all checked depths`);
+                    }
+                });
+                
+                // Update binning on date change
+                startInput.addEventListener('change', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('adcp', binning);
+                    }
+                });
+                
+                endInput.addEventListener('change', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('adcp', binning);
+                    }
+                });
+                
+                // Set initial binning info
+                updateBinningInfo('adcp', '5min');
+                document.getElementById('adcp-preset-6h').classList.add('active');
+            }
+            
+            // Setup ADCP datetime picker
+            setupADCPDateTimePicker();
+            
+            // Connect to ADCP server when map loads
+            connectADCP();
+            // --- End ADCP integration ---
+
+            // --- Oceanographic Data (Heatmap) Integration ---
+            let oceanographicWebSocket = null;
+            let oceanographicSensors = {};
+            let oceanographicData = {}; // Store data points for each sensor
+            const MAX_HEATMAP_POINTS = 1000; // Max points to keep in memory per sensor
+            
+            // Update oceanographic legend (must be defined here for scope)
+            function updateOceanographicLegend() {
+                console.log('[Oceanographic] updateOceanographicLegend() called');
+                const legendList = document.getElementById('legend-list');
+                if (!legendList) {
+                    console.warn('[Oceanographic] Legend list not found');
+                    return;
+                }
+                
+                // Clear placeholder text if present
+                if (legendList.innerText && legendList.innerText.includes('toggle layers')) {
+                    console.log('[Oceanographic] Clearing placeholder text');
+                    legendList.innerHTML = '';
+                }
+                
+                // Remove any existing oceanographic legend items
+                const existingOceanItems = legendList.querySelectorAll('.legend-item-ocean');
+                existingOceanItems.forEach(item => item.remove());
+                
+                // Add checked oceanographic sensors to legend
+                const sensors = ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'];
+                let addedCount = 0;
+                
+                sensors.forEach(sensor => {
+                    const checkbox = document.getElementById(`ocean-${sensor}-chk`);
+                    if (!checkbox || !checkbox.checked || checkbox.disabled) return;
+                    
+                    const sensorConfig = oceanographicSensors[sensor];
+                    if (!sensorConfig) {
+                        console.warn(`[Oceanographic] No config for sensor: ${sensor}`);
+                        return;
+                    }
+                    
+                    console.log(`[Oceanographic] Adding ${sensor} to legend`);
+                    
+                    const item = document.createElement('div');
+                    item.className = 'legend-item legend-item-ocean';
+                    item.style.flexDirection = 'column';
+                    item.style.alignItems = 'flex-start';
+                    item.style.gap = '4px';
+                    item.style.marginBottom = '10px';
+                    
+                    // Create gradient bar from color scheme (Viridis: yellow to purple)
+                    const colorScheme = sensorConfig.colorScheme || [
+                        '#fde724', '#5ec962', '#21918c', '#3b528b', '#440154'
+                    ];
+                    const gradient = `linear-gradient(to right, ${colorScheme.join(', ')})`;
+                    
+                    const [min, max] = sensorConfig.range;
+                    
+                    item.innerHTML = `
+                        <div class="name" style="font-weight: 500; cursor: pointer;">${sensorConfig.name}</div>
+                        <div style="width: 100%; height: 12px; background: ${gradient}; border-radius: 2px; cursor: pointer;"></div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 10px; color: #666; cursor: pointer;">
+                            <span>${min}${sensorConfig.unit}</span>
+                            <span>${max}${sensorConfig.unit}</span>
+                        </div>
+                    `;
+                    
+                    // Zoom to data bounds when clicked
+                    item.addEventListener('click', () => {
+                        const data = oceanographicData[sensor];
+                        if (!data || data.length === 0) {
+                            console.log(`[Oceanographic] No data to zoom for ${sensor}`);
+                            return;
+                        }
+                        
+                        let minX = 180, minY = 90, maxX = -180, maxY = -90;
+                        data.forEach(point => {
+                            if (point.lon < minX) minX = point.lon;
+                            if (point.lon > maxX) maxX = point.lon;
+                            if (point.lat < minY) minY = point.lat;
+                            if (point.lat > maxY) maxY = point.lat;
+                        });
+                        
+                        if (minX === maxX && minY === maxY) {
+                            map.flyTo({ center: [minX, minY], zoom: 12 });
+                        } else {
+                            map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 20 });
+                        }
+                    });
+                    
+                    legendList.appendChild(item);
+                    addedCount++;
+                });
+                
+                console.log(`[Oceanographic] Legend updated: ${addedCount} sensors added`);
+                
+                // Update "no layers" message
+                if (legendList.children.length === 0) {
+                    legendList.innerText = '(toggle layers to populate legend)';
+                } else if (legendList.innerText.includes('toggle layers')) {
+                    legendList.innerText = '';
+                }
+            }
+            
+            function updateADCPLegend() {
+                const legendList = document.getElementById('legend-list');
+                if (!legendList) return;
+                
+                // Clear placeholder text if present
+                if (legendList.innerText && legendList.innerText.includes('toggle layers')) {
+                    legendList.innerHTML = '';
+                }
+                
+                // Remove any existing ADCP legend items
+                const existingADCPItems = legendList.querySelectorAll('.legend-item-adcp');
+                existingADCPItems.forEach(item => item.remove());
+                
+                // Check if any ADCP layers are active
+                let hasActiveADCP = false;
+                depthCheckboxes.forEach(config => {
+                    const checkbox = document.getElementById(config.id);
+                    if (checkbox && checkbox.checked && !checkbox.disabled) {
+                        hasActiveADCP = true;
+                    }
+                });
+                
+                if (!hasActiveADCP) return;
+                
+                // Add ADCP section header
+                const headerItem = document.createElement('div');
+                headerItem.className = 'legend-item-adcp';
+                headerItem.style.marginTop = '12px';
+                headerItem.style.marginBottom = '8px';
+                headerItem.style.fontWeight = '600';
+                headerItem.style.fontSize = '12px';
+                headerItem.style.borderTop = '1px solid rgba(0,0,0,0.1)';
+                headerItem.style.paddingTop = '8px';
+                headerItem.textContent = 'ADCP Current Velocity';
+                legendList.appendChild(headerItem);
+                
+                // Add reference vector (1 knot)
+                const refItem = document.createElement('div');
+                refItem.className = 'legend-item-adcp';
+                refItem.style.display = 'flex';
+                refItem.style.alignItems = 'center';
+                refItem.style.gap = '8px';
+                refItem.style.marginBottom = '8px';
+                refItem.style.fontSize = '11px';
+                refItem.style.color = '#555';
+                
+                // Create SVG arrow for reference (1 knot = arrow size 0.3 + 1*0.5 = 0.8)
+                const arrowSize = 0.3 + (1.0 * 0.5); // Same formula as used in map
+                const arrowLength = arrowSize * 25; // Scale for display
+                refItem.innerHTML = `
+                    <svg width="${arrowLength}" height="14" style="flex-shrink: 0;">
+                        <defs>
+                            <marker id="arrowhead-ref" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                                <polygon points="0 0, 6 3, 0 6" fill="#666" />
+                            </marker>
+                        </defs>
+                        <line x1="0" y1="7" x2="${arrowLength-2}" y2="7" stroke="#666" stroke-width="2" marker-end="url(#arrowhead-ref)" />
+                    </svg>
+                    <span>= 1 knot</span>
+                `;
+                legendList.appendChild(refItem);
+                
+                // Add active depth ranges
+                depthCheckboxes.forEach(config => {
+                    const checkbox = document.getElementById(config.id);
+                    if (!checkbox || !checkbox.checked || checkbox.disabled) return;
+                    
+                    const color = ADCP_DEPTH_COLORS[config.depth] || '#666';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'legend-item legend-item-adcp';
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.gap = '8px';
+                    item.style.marginBottom = '6px';
+                    item.style.cursor = 'pointer';
+                    
+                    item.innerHTML = `
+                        <svg width="20" height="20" style="flex-shrink: 0;">
+                            <defs>
+                                <marker id="arrowhead-${config.depth}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                                    <polygon points="0 0, 6 3, 0 6" fill="${color}" />
+                                </marker>
+                            </defs>
+                            <line x1="2" y1="10" x2="16" y2="10" stroke="${color}" stroke-width="2.5" marker-end="url(#arrowhead-${config.depth})" />
+                        </svg>
+                        <div class="name" style="font-size: 12px;">${config.depth}m (${config.instrument})</div>
+                    `;
+                    
+                    // Zoom to ADCP data when clicked
+                    item.addEventListener('click', () => {
+                        const vectors = adcpVectorsByDepth[config.depth];
+                        if (!vectors || vectors.length === 0) return;
+                        
+                        let minX = 180, minY = 90, maxX = -180, maxY = -90;
+                        vectors.forEach(v => {
+                            if (v.lon < minX) minX = v.lon;
+                            if (v.lon > maxX) maxX = v.lon;
+                            if (v.lat < minY) minY = v.lat;
+                            if (v.lat > maxY) maxY = v.lat;
+                        });
+                        
+                        if (minX === maxX && minY === maxY) {
+                            map.flyTo({ center: [minX, minY], zoom: 12 });
+                        } else {
+                            map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 20 });
+                        }
+                    });
+                    
+                    legendList.appendChild(item);
+                });
+                
+                console.log('[ADCP] Legend updated');
+            }
+            
+            function connectOceanographic() {
+                const WS_URL = 'ws://localhost:8086';
+                
+                console.log('Connecting to oceanographic data server...');
+                oceanographicWebSocket = new WebSocket(WS_URL);
+                
+                oceanographicWebSocket.onopen = () => {
+                    console.log('[Oceanographic] WebSocket connected');
+                    
+                    // Subscribe to all sensors
+                    oceanographicWebSocket.send(JSON.stringify({
+                        type: 'subscribe',
+                        sensors: ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll']
+                    }));
+                    
+                    // Request initial historical data for checked layers using datetime picker values
+                    const startInput = document.getElementById('ocean-start-datetime');
+                    const endInput = document.getElementById('ocean-end-datetime');
+                    if (startInput && endInput && startInput.value && endInput.value) {
+                        const start = new Date(startInput.value);
+                        const end = new Date(endInput.value);
+                        const binning = calculateBinning(start, end);
+                        requestHistoricalDataForActiveLayers(start.toISOString(), end.toISOString(), binning);
+                    }
+                };
+                
+                oceanographicWebSocket.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        
+                        if (!message || !message.type) {
+                            console.warn('[Oceanographic] Received message without type:', event.data);
+                            return;
+                        }
+                        
+                        if (message.type === 'config') {
+                            // Sensor configuration received
+                            oceanographicSensors = message.sensors;
+                            console.log('[Oceanographic] Sensor config received:', Object.keys(oceanographicSensors).length, 'sensors');
+                            
+                            // Enable checkboxes now that we're connected
+                            ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                                const checkbox = document.getElementById(`ocean-${sensor}-chk`);
+                                const slider = document.getElementById(`ocean-${sensor}-op`);
+                                const label = checkbox.nextElementSibling;
+                                
+                                if (!checkbox) {
+                                    console.error(`[Oceanographic] Checkbox not found for sensor: ${sensor}`);
+                                    return;
+                                }
+                                
+                                checkbox.disabled = false;
+                                slider.disabled = false;
+                                label.textContent = oceanographicSensors[sensor].name;
+                                
+                                // Register checkbox for group toggle
+                                layerCheckboxes.oceanographic.push(checkbox);
+                                
+                                // Setup event handlers (only if not already set up)
+                                if (!checkbox.dataset.handlerSet) {
+                                    checkbox.dataset.handlerSet = 'true';
+                                    
+                                    checkbox.addEventListener('change', () => {
+                                        console.log(`[Oceanographic] ${sensor} toggled:`, checkbox.checked);
+                                        if (checkbox.checked) {
+                                            // Get current datetime range
+                                            const startInput = document.getElementById('ocean-start-datetime');
+                                            const endInput = document.getElementById('ocean-end-datetime');
+                                            const start = new Date(startInput.value);
+                                            const end = new Date(endInput.value);
+                                            const binning = calculateBinning(start, end);
+                                            
+                                            requestHistoricalDataWithRange(sensor, start.toISOString(), end.toISOString(), binning);
+                                        } else {
+                                            hideHeatmapLayer(sensor);
+                                        }
+                                        // Update legend immediately
+                                        updateOceanographicLegend();
+                                    });
+                                    
+                                    slider.addEventListener('input', () => {
+                                        updateHeatmapOpacity(sensor, parseFloat(slider.value));
+                                    });
+                                }
+                            });
+                            
+                        } else if (message.type === 'realtime') {
+                            // Real-time data point received
+                            const data = message.data;
+                            addDataPoint(data);
+                            
+                            // Only update layer if checkbox is checked
+                            const checkbox = document.getElementById(`ocean-${data.sensor}-chk`);
+                            if (checkbox && checkbox.checked) {
+                                updateHeatmapLayer(data.sensor);
+                            }
+                            
+                            // Update info display
+                            const info = document.getElementById('oceanographic-info');
+                            if (info) {
+                                info.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+                            }
+                            
+                        } else if (message.type === 'historical') {
+                            // Historical data received
+                            const sensor = message.sensor;
+                            const data = message.data;
+                            
+                            console.log(`[Oceanographic] Historical data for ${sensor}: ${data.length} points`);
+                            
+                            // Replace existing data with historical data
+                            oceanographicData[sensor] = data;
+                            
+                            // Show heatmap if layer is checked
+                            const checkbox = document.getElementById(`ocean-${sensor}-chk`);
+                            if (checkbox && checkbox.checked) {
+                                updateHeatmapLayer(sensor);
+                                // Ensure layer is visible
+                                const layerId = `oceanographic-${sensor}-heatmap`;
+                                if (map.getLayer(layerId)) {
+                                    map.setLayoutProperty(layerId, 'visibility', 'visible');
+                                }
+                                // Update legend immediately after data loads
+                                updateOceanographicLegend();
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[Oceanographic] Data parse error:', err);
+                        console.error('[Oceanographic] Raw data:', event.data);
+                    }
+                };
+                
+                oceanographicWebSocket.onerror = (err) => {
+                    console.error('[Oceanographic] WebSocket error:', err);
+                };
+                
+                oceanographicWebSocket.onclose = () => {
+                    console.log('[Oceanographic] WebSocket disconnected');
+                    oceanographicWebSocket = null;
+                    
+                    // Disable checkboxes
+                    ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                        const checkbox = document.getElementById(`ocean-${sensor}-chk`);
+                        const slider = document.getElementById(`ocean-${sensor}-op`);
+                        const label = checkbox.nextElementSibling;
+                        
+                        checkbox.disabled = true;
+                        slider.disabled = true;
+                        label.textContent = `${oceanographicSensors[sensor]?.name || sensor} (disconnected)`;
+                    });
+                    
+                    // Attempt reconnect after 5 seconds
+                    setTimeout(connectOceanographic, 5000);
+                };
+            }
+            
+            // Add a data point to the collection
+            function addDataPoint(data) {
+                if (!oceanographicData[data.sensor]) {
+                    oceanographicData[data.sensor] = [];
+                }
+                
+                oceanographicData[data.sensor].push(data);
+                
+                // Limit number of points to prevent memory issues
+                if (oceanographicData[data.sensor].length > MAX_HEATMAP_POINTS) {
+                    oceanographicData[data.sensor].shift();
+                }
+            }
+            
+            // Request historical data for all active layers
+            function requestHistoricalDataForActiveLayers(startTime, endTime, binning) {
+                ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                    const checkbox = document.getElementById(`ocean-${sensor}-chk`);
+                    if (checkbox && checkbox.checked) {
+                        requestHistoricalDataWithRange(sensor, startTime, endTime, binning);
+                    }
+                });
+            }
+            
+            // New function to request data with datetime range
+            function requestHistoricalDataWithRange(sensor, startTime, endTime, binning) {
+                if (oceanographicWebSocket && oceanographicWebSocket.readyState === WebSocket.OPEN) {
+                    oceanographicWebSocket.send(JSON.stringify({
+                        type: 'historical',
+                        sensor: sensor,
+                        startTime: startTime,
+                        endTime: endTime,
+                        binning: binning
+                    }));
+                }
+            }
+            
+            // Calculate appropriate binning based on time range
+            function calculateBinning(startTime, endTime) {
+                const diffMs = endTime - startTime;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                const diffDays = diffHours / 24;
+                
+                if (diffHours <= 12) {
+                    return '5min';  // Up to 12 hours: 5 min bins
+                } else if (diffDays <= 3) {
+                    return '30min'; // 12 hours to 3 days: 30 min bins
+                } else {
+                    return '1hr';   // Over 3 days: 1 hour bins
+                }
+            }
+            
+            // Update binning info display
+            function updateBinningInfo(prefix, binning) {
+                const binningInfo = document.getElementById(`${prefix}-binning-info`);
+                if (binningInfo) {
+                    binningInfo.textContent = `Binning: ${binning}`;
+                }
+            }
+            
+            // Oceanographic datetime picker setup
+            function setupOceanographicDateTimePicker() {
+                const startInput = document.getElementById('ocean-start-datetime');
+                const endInput = document.getElementById('ocean-end-datetime');
+                const applyBtn = document.getElementById('ocean-apply-range');
+                
+                // Set default to last 12 hours
+                const now = new Date();
+                const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+                
+                startInput.value = formatDateTimeLocal(twelveHoursAgo);
+                endInput.value = formatDateTimeLocal(now);
+                
+                // Preset buttons
+                const presets = [
+                    { id: 'ocean-preset-1h', hours: 1 },
+                    { id: 'ocean-preset-6h', hours: 6 },
+                    { id: 'ocean-preset-12h', hours: 12 },
+                    { id: 'ocean-preset-24h', hours: 24 },
+                    { id: 'ocean-preset-3d', hours: 72 },
+                    { id: 'ocean-preset-7d', hours: 168 }
+                ];
+                
+                presets.forEach(preset => {
+                    document.getElementById(preset.id).addEventListener('click', () => {
+                        // Always use current time as end, and calculate start from now
+                        const end = new Date();
+                        const start = new Date(end.getTime() - preset.hours * 60 * 60 * 1000);
+                        startInput.value = formatDateTimeLocal(start);
+                        endInput.value = formatDateTimeLocal(end);
+                        
+                        // Update binning info
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('ocean', binning);
+                        
+                        // Highlight active preset
+                        document.querySelectorAll('.time-preset-btn').forEach(btn => {
+                            if (btn.id.startsWith('ocean-preset-')) btn.classList.remove('active');
+                        });
+                        document.getElementById(preset.id).classList.add('active');
+                    });
+                });
+                
+                // Apply button
+                applyBtn.addEventListener('click', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                        alert('Please select valid start and end times');
+                        return;
+                    }
+                    
+                    if (start >= end) {
+                        alert('Start time must be before end time');
+                        return;
+                    }
+                    
+                    const binning = calculateBinning(start, end);
+                    updateBinningInfo('ocean', binning);
+                    
+                    requestHistoricalDataForActiveLayers(start.toISOString(), end.toISOString(), binning);
+                });
+                
+                // Update binning on date change
+                startInput.addEventListener('change', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('ocean', binning);
+                    }
+                });
+                
+                endInput.addEventListener('change', () => {
+                    const start = new Date(startInput.value);
+                    const end = new Date(endInput.value);
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                        const binning = calculateBinning(start, end);
+                        updateBinningInfo('ocean', binning);
+                    }
+                });
+                
+                // Set initial binning info
+                updateBinningInfo('ocean', '5min');
+                document.getElementById('ocean-preset-12h').classList.add('active');
+            }
+            
+            // Helper function to format date for datetime-local input
+            function formatDateTimeLocal(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+            
+            // Create or update heatmap layer
+            function updateHeatmapLayer(sensor) {
+                const data = oceanographicData[sensor];
+                if (!data || data.length === 0) return;
+                
+                const sensorConfig = oceanographicSensors[sensor];
+                if (!sensorConfig) return;
+                
+                const sourceId = `oceanographic-${sensor}-source`;
+                const layerId = `oceanographic-${sensor}-heatmap`;
+                
+                // Create GeoJSON from data points
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: data.map(point => ({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.lon, point.lat]
+                        },
+                        properties: {
+                            value: point.value,
+                            timestamp: point.timestamp
+                        }
+                    }))
+                };
+                
+                // Add or update source
+                if (map.getSource(sourceId)) {
+                    map.getSource(sourceId).setData(geojson);
+                } else {
+                    map.addSource(sourceId, {
+                        type: 'geojson',
+                        data: geojson
+                    });
+                }
+                
+                // Add heatmap layer if it doesn't exist
+                if (!map.getLayer(layerId)) {
+                    const [min, max] = sensorConfig.range;
+                    const mid = (min + max) / 2;
+                    
+                    // Get color scheme from sensor config (Viridis by default: yellow to purple)
+                    const colorScheme = sensorConfig.colorScheme || [
+                        '#fde724', '#5ec962', '#21918c', '#3b528b', '#440154'
+                    ];
+                    
+                    map.addLayer({
+                        id: layerId,
+                        type: 'heatmap',
+                        source: sourceId,
+                        paint: {
+                            // Increase weight based on value
+                            'heatmap-weight': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'value'],
+                                min, 0,
+                                max, 1
+                            ],
+                            // Heatmap intensity (increase with zoom)
+                            'heatmap-intensity': [
+                                'interpolate',
+                                ['linear'],
+                                ['zoom'],
+                                0, 1,
+                                15, 3
+                            ],
+                            // Color based on density with sensor-specific gradient
+                            'heatmap-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['heatmap-density'],
+                                0, 'rgba(0,0,0,0)',
+                                0.2, colorScheme[0],
+                                0.4, colorScheme[1],
+                                0.6, colorScheme[2],
+                                0.8, colorScheme[3],
+                                1, colorScheme[4]
+                            ],
+                            // Radius of each point (increase with zoom)
+                            'heatmap-radius': [
+                                'interpolate',
+                                ['linear'],
+                                ['zoom'],
+                                0, 2,
+                                9, 20,
+                                15, 40
+                            ],
+                            // Opacity
+                            'heatmap-opacity': parseFloat(document.getElementById(`ocean-${sensor}-op`).value) || 0.7
+                        }
+                    }, 'gps-trail-ship-layer'); // Add below GPS trail
+                    
+                    console.log(`[Oceanographic] Created heatmap layer: ${layerId} with ${data.length} points`);
+                } else {
+                    // Layer exists, update source data but don't change visibility
+                    console.log(`[Oceanographic] Updated heatmap layer: ${layerId} with ${data.length} points`);
+                }
+            }
+            
+            // Hide heatmap layer
+            function hideHeatmapLayer(sensor) {
+                const layerId = `oceanographic-${sensor}-heatmap`;
+                
+                if (map.getLayer(layerId)) {
+                    console.log(`[Oceanographic] Hiding layer: ${layerId}`);
+                    map.setLayoutProperty(layerId, 'visibility', 'none');
+                }
+                
+                // Update legend to remove this sensor
+                updateOceanographicLegend();
+            }
+            
+            // Update heatmap opacity
+            function updateHeatmapOpacity(sensor, opacity) {
+                const layerId = `oceanographic-${sensor}-heatmap`;
+                
+                if (map.getLayer(layerId)) {
+                    map.setPaintProperty(layerId, 'heatmap-opacity', opacity);
+                }
+            }
+            
+            // Setup datetime pickers
+            setupOceanographicDateTimePicker();
+            
+            // Connect to oceanographic server when map loads
+            connectOceanographic();
+            // --- End Oceanographic Integration ---
+            
+            // Debug: Log Data Layers section visibility on load
+            setTimeout(() => {
+                const oceanGroup = document.getElementById('oceanographic-group');
+                const oceanList = document.getElementById('oceanographic-list');
+                console.log('[Debug] Data Layers section exists:', !!oceanGroup);
+                console.log('[Debug] Data Layers visible:', oceanGroup ? window.getComputedStyle(oceanGroup).display : 'N/A');
+                console.log('[Debug] Oceanographic list exists:', !!oceanList);
+                if (oceanList) {
+                    console.log('[Debug] Number of sensor entries:', oceanList.querySelectorAll('.layer-entry').length);
+                }
+            }, 1000);
         });
 
     </script>

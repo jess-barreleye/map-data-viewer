@@ -1,0 +1,15 @@
+{
+  "name": "maplibre-rov-adcp-server",
+  "version": "1.0.0",
+  "description": "ADCP data server - reads NetCDF files and broadcasts current vectors via WebSocket",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["adcp", "websocket", "netcdf", "ocean currents"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

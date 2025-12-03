@@ -19,10 +19,74 @@ services:
     build: ./gps-server
     container_name: maplibre-gps-server
     ports:
-      - "12345:12345/udp"  # UDP port for Seapath GPS data input
-      - "8081:8081"         # WebSocket port for browser clients
+      - "12345:12345/udp"  # UDP port for Ship (Seapath) GPS data
+      - "12346:12346/udp"  # UDP port for ROV GPS data
+      - "8081:8081"         # WebSocket port for Ship data
+      - "8082:8082"         # WebSocket port for ROV data
     environment:
-      - UDP_PORT=12345
+      - UDP_PORT_SHIP=12345
+      - UDP_PORT_ROV=12346
       - UDP_HOST=0.0.0.0
-      - WS_PORT=8081
+      - WS_PORT_SHIP=8081
+      - WS_PORT_ROV=8082
+    restart: unless-stopped
+
+  adcp-server:
+    build: ./adcp-server
+    container_name: maplibre-adcp-server
+    ports:
+      - "8083:8083"         # WebSocket port for ADCP data
+    volumes:
+      - ./adcp-data:/data/adcp:ro  # Mount ADCP NetCDF files (add when database path is known)
+    environment:
+      - WS_PORT_ADCP=8083
+      - NETCDF_PATH=/data/adcp
+      - AUTO_REFRESH_INTERVAL=300000
+    restart: unless-stopped
+
+  rov-telemetry-server:
+    build: ./rov-telemetry-server
+    container_name: maplibre-rov-telemetry
+    ports:
+      - "8084:8084"         # WebSocket port for ROV telemetry data
+    environment:
+      - WS_PORT_TELEMETRY=8084
+      - INFLUXDB_URL=${INFLUXDB_URL:-http://localhost:8086}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-rov-data}
+      - QUERY_INTERVAL=${QUERY_INTERVAL:-1000}
+      - USE_MOCK_DATA=${USE_MOCK_DATA:-true}
+    restart: unless-stopped
+
+  multibeam-server:
+    build: ./multibeam-server
+    container_name: maplibre-multibeam
+    ports:
+      - "8085:8085"         # WebSocket port for multibeam swath data
+    environment:
+      - WS_PORT_MULTIBEAM=8085
+      - INFLUXDB_URL=${INFLUXDB_URL:-http://localhost:8086}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-multibeam-data}
+      - QUERY_INTERVAL=${QUERY_INTERVAL:-1000}
+      - USE_MOCK_DATA=${USE_MOCK_DATA:-true}
+    restart: unless-stopped
+
+  oceanographic-server:
+    build: ./oceanographic-server
+    container_name: maplibre-oceanographic
+    ports:
+      - "8086:8086"         # WebSocket port for oceanographic data
+    environment:
+      - PORT=8086
+      - WS_PORT=8086
+      - INFLUXDB_URL=${INFLUXDB_URL:-http://localhost:8086}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-openrvdas}
+      - QUERY_INTERVAL_MS=${QUERY_INTERVAL:-2000}
+      - HISTORICAL_RANGE_HOURS=24
+      - USE_MOCK_DATA=${USE_MOCK_DATA:-true}
     restart: unless-stopped

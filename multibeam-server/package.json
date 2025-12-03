@@ -1,0 +1,25 @@
+{
+  "name": "multibeam-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for Kongsberg multibeam swath visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "USE_MOCK_DATA=true node server.js"
+  },
+  "keywords": [
+    "multibeam",
+    "kongsberg",
+    "sonar",
+    "swath",
+    "websocket"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@influxdata/influxdb-client": "^1.33.2"
+  }
+}

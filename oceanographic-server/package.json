@@ -1,0 +1,13 @@
+{
+  "name": "oceanographic-server",
+  "version": "1.0.0",
+  "description": "Oceanographic sensor data server with InfluxDB integration for OpenRVDAS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "@influxdata/influxdb-client": "^1.33.2"
+  }
+}

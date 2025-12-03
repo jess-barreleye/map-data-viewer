@@ -5,10 +5,10 @@
   },
   "data": {
     "map": {
-      "mbtiles": "/data/mbtiles/map.mbtiles"
+      "mbtiles": "./maps/map.mbtiles"
     },
     "area_100m_contour": {
-      "mbtiles": "/data/mbtiles/area_100m_contour.mbtiles"
+      "mbtiles": "./maps/area_100m_contour.mbtiles"
     }
   }
 }

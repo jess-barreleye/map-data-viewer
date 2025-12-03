@@ -72,11 +72,21 @@ const server = http.createServer((req, res) => {
                 res.end(`Server Error: ${err.code}`);
             }
         } else {
-            res.writeHead(200, {
+            // Stronger cache busting for HTML files
+            const headers = {
                 'Content-Type': contentType,
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-cache'
-            });
+                'Access-Control-Allow-Origin': '*'
+            };
+            
+            if (ext === '.html') {
+                headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+                headers['Pragma'] = 'no-cache';
+                headers['Expires'] = '0';
+            } else {
+                headers['Cache-Control'] = 'no-cache';
+            }
+            
+            res.writeHead(200, headers);
             res.end(content);
         }
     });

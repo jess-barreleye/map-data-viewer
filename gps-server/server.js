@@ -2,21 +2,29 @@ const dgram = require('dgram');
 const { WebSocketServer } = require('ws');
 
 // Configuration
-const UDP_PORT = parseInt(process.env.UDP_PORT || '12345');
+const UDP_PORT_SHIP = parseInt(process.env.UDP_PORT_SHIP || '12345');
+const UDP_PORT_ROV = parseInt(process.env.UDP_PORT_ROV || '12346');
 const UDP_HOST = process.env.UDP_HOST || '0.0.0.0';
-const WS_PORT = parseInt(process.env.WS_PORT || '8081');
+const WS_PORT_SHIP = parseInt(process.env.WS_PORT_SHIP || '8081');
+const WS_PORT_ROV = parseInt(process.env.WS_PORT_ROV || '8082');
 
-// Create UDP socket for receiving Seapath GPS data
-const udpServer = dgram.createSocket('udp4');
+// Create UDP socket for receiving Seapath GPS data (ship)
+const udpServerShip = dgram.createSocket('udp4');
 
-// Create WebSocket server for broadcasting to browser clients
-const wss = new WebSocketServer({ port: WS_PORT });
+// Create UDP socket for receiving ROV GPS data
+const udpServerROV = dgram.createSocket('udp4');
+
+// Create WebSocket servers for broadcasting to browser clients
+const wssShip = new WebSocketServer({ port: WS_PORT_SHIP });
+const wssROV = new WebSocketServer({ port: WS_PORT_ROV });
 
 // Store connected clients
-const clients = new Set();
+const clientsShip = new Set();
+const clientsROV = new Set();
 
 // Store latest GPS data for new clients
-let latestGpsData = {};
+let latestGpsDataShip = {};
+let latestGpsDataROV = {};
 
 // NMEA sentence parser
 function parseNMEA(sentence) {
@@ -109,77 +117,153 @@ function parseCoordinate(coord, direction) {
     return decimal;
 }
 
-// Handle UDP messages
-udpServer.on('message', (msg, rinfo) => {
+// Handle Ship UDP messages
+udpServerShip.on('message', (msg, rinfo) => {
     const data = msg.toString().trim();
-    console.log(`Received UDP data from ${rinfo.address}:${rinfo.port} - ${data}`);
+    console.log(`[SHIP] Received UDP data from ${rinfo.address}:${rinfo.port} - ${data}`);
     
     // Split by line in case multiple sentences are sent together
     const sentences = data.split(/\r?\n/).filter(s => s.trim());
     
     sentences.forEach(sentence => {
         if (sentence.startsWith('$')) {
-            console.log(`Parsing sentence: ${sentence}`);
+            console.log(`[SHIP] Parsing sentence: ${sentence}`);
             const parsed = parseNMEA(sentence);
             
             if (parsed) {
-                console.log(`Parsed data:`, parsed);
+                console.log(`[SHIP] Parsed data:`, parsed);
                 // Merge with latest data (combine GGA, RMC, VTG info)
-                latestGpsData = {
-                    ...latestGpsData,
+                latestGpsDataShip = {
+                    ...latestGpsDataShip,
                     ...parsed,
                     raw: sentence,
-                    source: 'seapath',
+                    source: 'ship',
+                    vehicle: 'Falkor-too',
                     receivedAt: new Date().toISOString()
                 };
                 
                 // Broadcast to all connected WebSocket clients
-                const message = JSON.stringify(latestGpsData);
-                clients.forEach(client => {
+                const message = JSON.stringify(latestGpsDataShip);
+                clientsShip.forEach(client => {
                     if (client.readyState === 1) { // WebSocket.OPEN
                         client.send(message);
                     }
                 });
                 
-                console.log(`GPS Update: ${parsed.type} - Lat: ${parsed.lat?.toFixed(6)}, Lon: ${parsed.lon?.toFixed(6)}`);
+                console.log(`[SHIP] GPS Update: ${parsed.type} - Lat: ${parsed.lat?.toFixed(6)}, Lon: ${parsed.lon?.toFixed(6)}`);
             }
         }
     });
 });
 
-udpServer.on('error', (err) => {
-    console.error('UDP Server error:', err);
+// Handle ROV UDP messages
+udpServerROV.on('message', (msg, rinfo) => {
+    const data = msg.toString().trim();
+    console.log(`[ROV] Received UDP data from ${rinfo.address}:${rinfo.port} - ${data}`);
+    
+    // Split by line in case multiple sentences are sent together
+    const sentences = data.split(/\r?\n/).filter(s => s.trim());
+    
+    sentences.forEach(sentence => {
+        if (sentence.startsWith('$')) {
+            console.log(`[ROV] Parsing sentence: ${sentence}`);
+            const parsed = parseNMEA(sentence);
+            
+            if (parsed) {
+                console.log(`[ROV] Parsed data:`, parsed);
+                // Merge with latest data (combine GGA, RMC, VTG info)
+                latestGpsDataROV = {
+                    ...latestGpsDataROV,
+                    ...parsed,
+                    raw: sentence,
+                    source: 'rov',
+                    vehicle: 'ROV',
+                    receivedAt: new Date().toISOString()
+                };
+                
+                // Broadcast to all connected WebSocket clients
+                const message = JSON.stringify(latestGpsDataROV);
+                clientsROV.forEach(client => {
+                    if (client.readyState === 1) { // WebSocket.OPEN
+                        client.send(message);
+                    }
+                });
+                
+                console.log(`[ROV] GPS Update: ${parsed.type} - Lat: ${parsed.lat?.toFixed(6)}, Lon: ${parsed.lon?.toFixed(6)}`);
+            }
+        }
+    });
 });
 
-udpServer.on('listening', () => {
-    const address = udpServer.address();
-    console.log(`UDP GPS Listener started on ${address.address}:${address.port}`);
+udpServerShip.on('error', (err) => {
+    console.error('[SHIP] UDP Server error:', err);
 });
 
-// WebSocket server handlers
-wss.on('connection', (ws) => {
-    console.log('WebSocket client connected');
-    clients.add(ws);
+udpServerShip.on('listening', () => {
+    const address = udpServerShip.address();
+    console.log(`[SHIP] UDP GPS Listener started on ${address.address}:${address.port}`);
+});
+
+udpServerROV.on('error', (err) => {
+    console.error('[ROV] UDP Server error:', err);
+});
+
+udpServerROV.on('listening', () => {
+    const address = udpServerROV.address();
+    console.log(`[ROV] UDP GPS Listener started on ${address.address}:${address.port}`);
+});
+
+// WebSocket server handlers for Ship
+wssShip.on('connection', (ws) => {
+    console.log('[SHIP] WebSocket client connected');
+    clientsShip.add(ws);
     
     // Send latest GPS data to new client
-    if (Object.keys(latestGpsData).length > 0) {
-        ws.send(JSON.stringify(latestGpsData));
+    if (Object.keys(latestGpsDataShip).length > 0) {
+        ws.send(JSON.stringify(latestGpsDataShip));
     }
     
     ws.on('close', () => {
-        console.log('WebSocket client disconnected');
-        clients.delete(ws);
+        console.log('[SHIP] WebSocket client disconnected');
+        clientsShip.delete(ws);
     });
     
     ws.on('error', (err) => {
-        console.error('WebSocket error:', err);
-        clients.delete(ws);
+        console.error('[SHIP] WebSocket error:', err);
+        clientsShip.delete(ws);
     });
 });
 
-// Start UDP server
-udpServer.bind(UDP_PORT, UDP_HOST);
+// WebSocket server handlers for ROV
+wssROV.on('connection', (ws) => {
+    console.log('[ROV] WebSocket client connected');
+    clientsROV.add(ws);
+    
+    // Send latest GPS data to new client
+    if (Object.keys(latestGpsDataROV).length > 0) {
+        ws.send(JSON.stringify(latestGpsDataROV));
+    }
+    
+    ws.on('close', () => {
+        console.log('[ROV] WebSocket client disconnected');
+        clientsROV.delete(ws);
+    });
+    
+    ws.on('error', (err) => {
+        console.error('[ROV] WebSocket error:', err);
+        clientsROV.delete(ws);
+    });
+});
 
-console.log(`WebSocket server started on ws://localhost:${WS_PORT}`);
-console.log(`Waiting for Seapath GPS data on UDP ${UDP_HOST}:${UDP_PORT}...`);
-console.log('Supported NMEA sentences: GGA, RMC, VTG');
+// Start UDP servers
+udpServerShip.bind(UDP_PORT_SHIP, UDP_HOST);
+udpServerROV.bind(UDP_PORT_ROV, UDP_HOST);
+
+console.log(`\n🌊 GPS Server Started`);
+console.log(`═══════════════════════════════════════`);
+console.log(`[SHIP] WebSocket: ws://localhost:${WS_PORT_SHIP}`);
+console.log(`[SHIP] UDP Listener: ${UDP_HOST}:${UDP_PORT_SHIP}`);
+console.log(`[ROV]  WebSocket: ws://localhost:${WS_PORT_ROV}`);
+console.log(`[ROV]  UDP Listener: ${UDP_HOST}:${UDP_PORT_ROV}`);
+console.log(`═══════════════════════════════════════`);
+console.log('Supported NMEA sentences: GGA, RMC, VTG\n');

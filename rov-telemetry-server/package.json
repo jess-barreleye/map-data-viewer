@@ -1,0 +1,24 @@
+{
+  "name": "rov-telemetry-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for ROV telemetry data (depth, heading) from InfluxDB",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "USE_MOCK_DATA=true node server.js"
+  },
+  "keywords": [
+    "rov",
+    "telemetry",
+    "websocket",
+    "influxdb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@influxdata/influxdb-client": "^1.33.2"
+  }
+}
