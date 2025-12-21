@@ -5,11 +5,13 @@ An interactive web-based map viewer built with **MapLibre GL JS** for visualizin
 ## Features
 
 - **MBTiles Raster Layer**: Display custom raster tiles from a local tile server with opacity control
-- **MapTiler Basemap**: Ocean-themed basemap overlay (requires API key)
-- **Point Layers**: Load CSV/TXT files with lat/long coordinates as toggleable point layers
-- **Geometry Layers**: Load GeoJSON/ASCII files (LineStrings, Polygons) as toggleable geometry layers
 - **Live GPS Tracking**: Dual GPS feeds for ship and ROV with custom icons and tracklines
-- **ADCP Current Vectors**: Real-time ocean current visualization from UHDAS/ADCP data
+- **ADCP Current Vectors**: Real-time ocean current visualization with multi-depth support
+- **ROV Telemetry**: Real-time depth and heading data from InfluxDB/OpenRVDAS
+- **Oceanographic Sensors**: Temperature, salinity, fluorescence, oxygen, pH, turbidity, chlorophyll
+- **Multibeam Swath**: Real-time seafloor mapping coverage visualization
+- **Point Layers**: Load CSV/TXT files with lat/long coordinates as toggleable point layers with labels
+- **Geometry Layers**: Load GeoJSON/ASCII files (LineStrings, Polygons) as toggleable geometry layers
 - **Layer Controls**: Individual checkboxes and opacity sliders for each layer
 - **Color Legend**: Dynamic legend showing only active layers with color swatches
 - **Auto-Centering**: Automatically fits map to tile server data extent on load
@@ -20,14 +22,25 @@ An interactive web-based map viewer built with **MapLibre GL JS** for visualizin
 
 Before running the project, install:
 
-1. **Node.js & npm** (optional, for tileserver-gl)
+1. **Node.js & npm**
 2. **TileServer GL** (to serve MBTiles):
    ```bash
    npm install -g tileserver-gl
    ```
-3. **Python 3** (to serve the HTML/JSON files):
-   - Usually pre-installed on macOS/Linux
-   - Available from [python.org](https://www.python.org) on Windows
+
+## Initial Setup
+
+### 1. Configuration
+
+Copy the example configuration and customize for your environment:
+
+```bash
+cp config.example.js config.js
+```
+
+Edit `config.js` to set your server URLs and ports. See [CONFIG.md](CONFIG.md) for details.
+
+**Important:** `config.js` is gitignored and will not be committed. This protects your local settings and API keys.
 
 ## Project Structure
 
