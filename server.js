@@ -104,7 +104,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🌊 MapLibre ROV Server`);
     console.log(`═══════════════════════════════════════`);
     console.log(`Local:   http://localhost:${PORT}`);
-    console.log(`Network: http://192.168.0.153:${PORT}`);
+    console.log(`Network: http://10.23.100.118:${PORT}`);
     console.log(`═══════════════════════════════════════`);
     console.log(`Serving files from: ${__dirname}`);
     console.log(`\nPress Ctrl+C to stop\n`);

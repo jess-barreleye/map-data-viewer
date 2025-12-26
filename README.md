@@ -66,14 +66,14 @@ To view the map, you must run **two separate local servers**: one to serve the t
 |--------|------|---------|---------|---------|
 | **TileServer GL** | 8080 | http://localhost:8080 | Serves MBTiles raster tiles | `tileserver-gl --mbtiles ./maps/*.mbtiles --port 8080` |
 | **Frontend Server** | 8000 | http://localhost:8000 | Serves HTML/JS/CSS files | `node server.js` or `python -m http.server 8000` |
-| **GPS Server (Ship)** | 8081 | ws://localhost:8081 | Ship GPS WebSocket feed | `cd gps-server && node server.js` |
-| **GPS Server (ROV)** | 8082 | ws://localhost:8082 | ROV GPS WebSocket feed | (same process as ship) |
+| **GPS Server (UDP)** | 8081, 8082 | ws://localhost:8081/8082 | Ship/ROV GPS (UDP/NMEA mode) | `cd gps-server && node server.js` |
+| **GPS Server (InfluxDB)** | 8081, 8082 | ws://localhost:8081/8082 | Ship/ROV GPS (InfluxDB mode) | `cd gps-server && node server-influxdb.js` |
 | **ADCP Server** | 8083 | ws://localhost:8083 | Ocean current vectors | `cd adcp-server && node server.js` |
 | **Telemetry Server** | 8084 | ws://localhost:8084 | ROV depth/heading display | `cd rov-telemetry-server && npm start` |
 | **Multibeam Server** | 8085 | ws://localhost:8085 | Sonar swath visualization | `cd multibeam-server && npm start` |
 | **Oceanographic Server** | 8086 | ws://localhost:8086 | 8 sensor heatmap layers | `cd oceanographic-server && npm start` |
 
-**Note**: Only TileServer GL (8080) and Frontend Server (8000) are required for basic map viewing. Additional servers (8081-8086) provide optional real-time data layers.
+**Note**: Only TileServer GL (8080) and Frontend Server (8000) are required for basic map viewing. Additional servers (8081-8086) provide optional real-time data layers. GPS server runs in either UDP mode (testing) or InfluxDB mode (production), not both simultaneously.
 
 ---
 
@@ -118,6 +118,8 @@ You can view the tile server UI at: http://localhost:8080
 ### Step 2: Configure Map Files (`style.json`)
 
 The `style.json` file tells MapLibre where to find your tiles. This configuration assumes your TileServer GL is running on port 8080.
+
+**Note:** This project uses MapTiler's free ocean basemap tiles. The included API key has usage limits. For production use or high-traffic deployments, please get your own free key at https://www.maptiler.com/ (100,000 free tile requests/month) and update the key in `style.json`.
 
 **File: `style.json`**
 
@@ -345,21 +347,44 @@ mapLibre-rov/
 
 The project includes dual GPS feeds for tracking both the **ship (Falkor-too)** and **ROV** simultaneously in real-time.
 
+### GPS Server Modes
+
+The GPS server operates in two modes depending on your data source:
+
+**1. UDP Mode (Testing/Development)** - `server.js`
+- Receives NMEA sentences via UDP from marine navigation systems
+- Best for: Testing with synthetic data, development environments
+- Use: `node server.js`
+
+**2. InfluxDB Mode (Production/Shipboard)** - `server-influxdb.js`
+- Queries real-time data from shipboard OpenRVDAS InfluxDB
+- Best for: Production use on research vessels with existing data infrastructure
+- Use: `node server-influxdb.js`
+
 ### Architecture
+
+**UDP Mode (Testing)**:
 ```
 Ship (Seapath) → UDP (port 12345) → GPS Server → WebSocket (port 8081) → Browser
 ROV Navigation → UDP (port 12346) → GPS Server → WebSocket (port 8082) → Browser
-ROV Telemetry → InfluxDB → Telemetry Server → WebSocket (port 8084) → Browser (depth/heading)
+ROV Telemetry → Mock Data → Telemetry Server → WebSocket (port 8084) → Browser (depth/heading)
+```
+
+**InfluxDB Mode (Production)**:
+```
+Ship (Seapath380) → OpenRVDAS → InfluxDB (10.23.9.24:8086) → GPS Server → WebSocket (port 8081) → Browser
+ROV (SB Sprint) → OpenRVDAS → InfluxDB (10.23.9.24:8086) → GPS Server → WebSocket (port 8082) → Browser
+ROV Telemetry → InfluxDB (sb_sprint) → Telemetry Server → WebSocket (port 8084) → Browser (depth/heading)
 ```
 
 ### GPS Server Features
-- **Dual GPS feeds**: Simultaneous tracking of ship and ROV on separate UDP/WebSocket ports
-- Receives NMEA sentences via UDP from marine navigation systems
-- Parses GGA (position), RMC (recommended minimum), and VTG (course/speed) sentence types
-- Converts NMEA coordinate format (DDMM.MMMM) to decimal degrees
+- **Dual GPS feeds**: Simultaneous tracking of ship and ROV on separate WebSocket ports
+- **UDP Mode**: Parses NMEA sentences (GGA/RMC/VTG), converts DDMM.MMMM to decimal degrees
+- **InfluxDB Mode**: Queries seapath380 (ship) and sb_sprint (ROV) measurements every 1 second
 - Broadcasts parsed GPS data to connected browser clients via WebSocket
 - Stores latest GPS data for new client connections
 - Automatic reconnection on disconnect for each feed independently
+- **Upcoming**: Historical position queries (UTC time selector) and trackline date range filtering
 
 ### Supported NMEA Sentences
 - **GGA**: Global Positioning System Fix Data (lat/lon, satellites, altitude, quality)
@@ -391,11 +416,17 @@ docker-compose logs -f gps-server
 docker-compose restart gps-server
 ```
 
+**Note**: Docker uses UDP mode by default. For InfluxDB mode in Docker, update `docker-compose.yml` to:
+- Mount `.env` file with InfluxDB credentials
+- Change command from `node server.js` to `node server-influxdb.js`
+
 ### Running Standalone (Development)
-For development or when Docker is not available:
+
+#### UDP Mode (Testing with NMEA sentences)
+For development or testing with synthetic NMEA data:
 
 ```bash
-# Terminal 1: Start GPS server
+# Terminal 1: Start GPS server (UDP mode)
 cd gps-server
 npm install
 node server.js
@@ -403,21 +434,74 @@ node server.js
 # Terminal 2: Send test ship data
 echo '$GPRMC,123519,A,4807.038,N,01131.000,W,022.4,084.4,230394,003.1,W*6A' | nc -u localhost 12345
 # Or use the test script
-node test-gps.js
+node test-moving-ship.js
 
 # Terminal 3: Send test ROV data
 echo '$GPGGA,123519,4807.100,N,01131.100,W,1,08,0.9,545.4,M,46.9,M,,*47' | nc -u localhost 12346
 # Or use the test script
-node test-rov-gps.js
+node test-moving-rov.js
+```
+
+#### InfluxDB Mode (Production with OpenRVDAS)
+For production use with shipboard InfluxDB:
+
+```bash
+# Terminal 1: Configure InfluxDB connection
+cd gps-server
+cat > .env << EOF
+INFLUXDB_URL=http://10.23.9.24:8086
+INFLUXDB_TOKEN=your_token_here
+INFLUXDB_ORG=your_org_id_here
+INFLUXDB_BUCKET=openrvdas
+WS_PORT_SHIP=8081
+WS_PORT_ROV=8082
+QUERY_INTERVAL=1000
+EOF
+
+# Start GPS server (InfluxDB mode)
+npm install
+node server-influxdb.js
+
+# The server will query InfluxDB every 1 second for:
+# - Ship: seapath380 measurement (Seapath_Latitude, Seapath_Longitude, Seapath_HeadingTrue, etc.)
+# - ROV: sb_sprint measurement (SB_Sprint_Latitude, SB_Sprint_Longitude, SB_Sprint_Depth_Corr, etc.)
+```
+
+**InfluxDB Measurements Used**:
+- `seapath380`: Ship GPS data (Latitude, Longitude, HeadingTrue, CourseTrue, SpeedKt, NumSats, FixQuality)
+- `sb_sprint`: ROV navigation (Latitude, Longitude, Depth_Corr, HeadingTrue, Altitude_m, Pitch, Roll)
+
+**Testing InfluxDB Connection**:
+```bash
+cd gps-server
+node test-seapath.js  # List seapath380 available fields
+node test-usbl.js     # Query USBL positioning data
 ```
 
 ### Configuration
+
+#### UDP Mode Configuration
 GPS server environment variables (set in `docker-compose.yml` or `.env`):
 - `UDP_PORT_SHIP`: UDP port for receiving ship GPS data (default: 12345)
 - `UDP_PORT_ROV`: UDP port for receiving ROV GPS data (default: 12346)
 - `UDP_HOST`: UDP bind address (default: 0.0.0.0)
 - `WS_PORT_SHIP`: WebSocket port for ship browser clients (default: 8081)
 - `WS_PORT_ROV`: WebSocket port for ROV browser clients (default: 8082)
+
+#### InfluxDB Mode Configuration
+GPS server environment variables (required in `.env` file):
+- `INFLUXDB_URL`: InfluxDB server URL (e.g., http://10.23.9.24:8086)
+- `INFLUXDB_TOKEN`: InfluxDB authentication token
+- `INFLUXDB_ORG`: InfluxDB organization ID (not name - use orgID from API)
+- `INFLUXDB_BUCKET`: InfluxDB bucket name (e.g., openrvdas)
+- `WS_PORT_SHIP`: WebSocket port for ship browser clients (default: 8081)
+- `WS_PORT_ROV`: WebSocket port for ROV browser clients (default: 8082)
+- `QUERY_INTERVAL`: InfluxDB query interval in milliseconds (default: 1000)
+
+**Finding your InfluxDB Org ID**:
+```bash
+curl -H "Authorization: Token YOUR_TOKEN" http://10.23.9.24:8086/api/v2/buckets | grep orgID
+```
 
 **Network Setup**: 
 - By default, services run on `localhost`
@@ -468,6 +552,62 @@ tail -f gps-server/gps-server.log
 - Both markers scale with zoom level (ship larger than ROV)
 - Independent visibility controls and opacity sliders for each vehicle
 
+### Historical Position Features (InfluxDB Mode)
+
+When using InfluxDB mode, the GPS server can query historical position data in addition to real-time streaming:
+
+#### 1. UTC Time Selector (Time Travel)
+View ship and ROV positions at any specific time in the past:
+
+**Features**:
+- DateTime picker to select any UTC timestamp
+- Queries InfluxDB for exact position at selected time
+- Displays historical position markers with different styling
+- "Back to Live" button to resume real-time streaming
+- Useful for: Post-dive analysis, incident review, waypoint verification
+
+**Usage** (Frontend controls - upcoming):
+- Click "Time Travel" button to open DateTime picker
+- Select date and time in UTC
+- Click "Go to Time" to query historical positions
+- Map displays ship and ROV positions at that exact moment
+- Click "Back to Live" to resume real-time tracking
+
+#### 2. Historical Trackline Date Range Filter
+Display complete track history between two dates:
+
+**Features**:
+- Start and end DateTime pickers for date range selection
+- Queries all position data within selected range
+- Renders as colored paths on map (separate from live tracklines)
+- Automatic downsampling for long date ranges (performance)
+- Toggle visibility, opacity, and color controls
+- Useful for: Mission planning, dive track review, environmental studies
+
+**Usage** (Frontend controls - upcoming):
+- Click "Load Historical Track" button
+- Select start date/time in UTC
+- Select end date/time in UTC
+- Choose vehicle (ship/ROV/both)
+- Click "Load" to query and display track
+- Historical tracks shown in different colors from live tracks
+- Export to GeoJSON option for external analysis
+
+**Query Performance Notes**:
+- Date ranges < 24 hours: Full resolution (1-second intervals)
+- Date ranges 1-7 days: 10-second aggregation
+- Date ranges > 7 days: 1-minute aggregation
+- Large queries may take 5-10 seconds to load
+
+**InfluxDB Flux Query Example**:
+```flux
+from(bucket: "openrvdas")
+  |> range(start: 2025-01-15T00:00:00Z, stop: 2025-01-15T23:59:59Z)
+  |> filter(fn: (r) => r["_measurement"] == "seapath380")
+  |> filter(fn: (r) => r["_field"] == "Seapath_Latitude" or r["_field"] == "Seapath_Longitude")
+  |> aggregateWindow(every: 10s, fn: mean)  // Downsampling for performance
+```
+
 ---
 
 ## ROV Telemetry (Depth & Heading)
@@ -504,12 +644,26 @@ The telemetry server can operate in two modes:
 
 **Telemetry Server** (`rov-telemetry-server/.env`):
 - `WS_PORT_TELEMETRY`: WebSocket port (default: 8084)
-- `INFLUXDB_URL`: InfluxDB server URL (default: http://localhost:8086)
+- `INFLUXDB_URL`: InfluxDB server URL (e.g., http://10.23.9.24:8086)
 - `INFLUXDB_TOKEN`: InfluxDB authentication token
-- `INFLUXDB_ORG`: InfluxDB organization name
-- `INFLUXDB_BUCKET`: InfluxDB bucket name (default: rov-data)
+- `INFLUXDB_ORG`: InfluxDB organization ID (not name - use orgID from API)
+- `INFLUXDB_BUCKET`: InfluxDB bucket name (e.g., openrvdas)
 - `QUERY_INTERVAL`: Query frequency in ms (default: 1000)
 - `USE_MOCK_DATA`: Set to `false` when InfluxDB is configured (default: true)
+
+**InfluxDB Configuration Example**:
+```bash
+cd rov-telemetry-server
+cat > .env << EOF
+WS_PORT_TELEMETRY=8084
+INFLUXDB_URL=http://10.23.9.24:8086
+INFLUXDB_TOKEN=your_token_here
+INFLUXDB_ORG=your_org_id_here
+INFLUXDB_BUCKET=openrvdas
+QUERY_INTERVAL=1000
+USE_MOCK_DATA=false
+EOF
+```
 
 ### Running with Docker (Production)
 ```bash
@@ -537,16 +691,29 @@ npm start
 ```
 
 ### InfluxDB Schema
-The telemetry server expects this schema (customizable in `server.js`):
+The telemetry server queries the following InfluxDB schema:
 
-**Measurement**: `rov_telemetry`
+**Production Mode (OpenRVDAS)**:
+- **Measurement**: `sb_sprint` (ROV navigation system)
+- **Fields**: 
+  - `SB_Sprint_Depth_Corr` (float) - Corrected depth in meters
+  - `SB_Sprint_HeadingTrue` (float) - True heading in degrees (0-360)
+  - `SB_Sprint_Altitude_m` (float) - Altitude above seafloor in meters
+  - `SB_Sprint_Pitch` (float) - Pitch angle in degrees
+  - `SB_Sprint_Roll` (float) - Roll angle in degrees
+  - `SB_Sprint_Latitude` (float) - ROV latitude
+  - `SB_Sprint_Longitude` (float) - ROV longitude
 
-**Fields**:
-- `depth` (float) - ROV depth in meters
-- `heading` (float) - ROV heading in degrees (0-360)
-- `altitude` (float) - Altitude above seafloor in meters
-- `pitch` (float) - Pitch angle in degrees
-- `roll` (float) - Roll angle in degrees
+**Testing Mode (Mock Data)**:
+- **Measurement**: `rov_telemetry` (if using custom InfluxDB for testing)
+- **Fields**: Same as above but without `SB_Sprint_` prefix
+
+**Testing InfluxDB Connection**:
+```bash
+cd rov-telemetry-server
+node test-influx.js        # List all measurements in bucket
+node test-sb-mechs.js      # List sb_sprint field names
+```
 
 See `rov-telemetry-server/README.md` for detailed setup and customization instructions.
 

@@ -7,6 +7,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
     "ws": "^8.14.2"
   }
 }

@@ -2,13 +2,28 @@
     "version": 8,
     "name": "Schmidt Ocean Custom MBTiles Map",
     "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-    "sources": {},
+    "sources": {
+        "maptiler-ocean": {
+            "type": "raster",
+            "tiles": ["https://api.maptiler.com/maps/ocean/{z}/{x}/{y}.png?key=l6MdcQlufQrB62Sb4203"],
+            "tileSize": 256,
+            "maxzoom": 22
+        }
+    },
     "layers": [
         {
             "id": "ocean-background",
             "type": "background",
             "paint": {
                 "background-color": "#001122"
+            }
+        },
+        {
+            "id": "maptiler-ocean-layer",
+            "type": "raster",
+            "source": "maptiler-ocean",
+            "paint": {
+                "raster-opacity": 1.0
             }
         }
     ]

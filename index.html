@@ -484,15 +484,6 @@
                         <input class="opacity" id="ocean-fluorescence-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
                     </div>
                     
-                    <!-- Dissolved Oxygen -->
-                    <div class="layer-entry">
-                        <div class="left">
-                            <input type="checkbox" id="ocean-oxygen-chk" disabled>
-                            <label for="ocean-oxygen-chk">Dissolved Oxygen (connecting...)</label>
-                        </div>
-                        <input class="opacity" id="ocean-oxygen-op" type="range" min="0" max="1" step="0.01" value="0.7" disabled>
-                    </div>
-                    
                     <!-- pH -->
                     <div class="layer-entry">
                         <div class="left">
@@ -1207,10 +1198,12 @@
                                 
                                 console.log(`GPS marker size updated: ${size}px at zoom ${zoom.toFixed(1)}`);
                                 
-                                // Maintain rotation if course data exists
+                                // Maintain rotation if course data exists, compensating for map rotation
                                 if (Number.isFinite(data.course)) {
+                                    const mapBearing = map.getBearing(); // Get current map rotation
+                                    // Subtract map bearing to keep ship pointing in absolute direction
                                     // Add 90° to compensate for PNG default orientation (pointing west = 270°)
-                                    img.style.transform = `rotate(${data.course + 90}deg)`;
+                                    img.style.transform = `rotate(${data.course + 90 - mapBearing}deg)`;
                                 }
                             };
                             
@@ -1219,6 +1212,9 @@
                             
                             // Update size on zoom
                             map.on('zoom', markerUpdateSizeShip);
+                            
+                            // Update rotation when map rotates
+                            map.on('rotate', markerUpdateSizeShip);
                             
                             gpsMarkerShip = new maplibregl.Marker({ 
                                 element: el,
@@ -1277,8 +1273,10 @@
                             if (Number.isFinite(data.course)) {
                                 const img = gpsMarkerShip.getElement().querySelector('#vessel-heading-img');
                                 if (img) {
+                                    const mapBearing = map.getBearing(); // Get current map rotation
+                                    // Subtract map bearing to keep ship pointing in absolute direction
                                     // Add 90° to compensate for PNG default orientation (pointing west = 270°)
-                                    img.style.transform = `rotate(${data.course + 90}deg)`;
+                                    img.style.transform = `rotate(${data.course + 90 - mapBearing}deg)`;
                                 }
                             }
                             
@@ -1438,10 +1436,12 @@
                                 
                                 console.log(`[ROV] GPS marker size updated: ${size}px at zoom ${zoom.toFixed(1)}`);
                                 
-                                // Maintain rotation if course data exists
+                                // Maintain rotation if course data exists, compensating for map rotation
                                 if (Number.isFinite(data.course)) {
+                                    const mapBearing = map.getBearing(); // Get current map rotation
+                                    // Subtract map bearing to keep ROV pointing in absolute direction
                                     // ROV PNG points east (90°), so no offset needed
-                                    img.style.transform = `rotate(${data.course}deg)`;
+                                    img.style.transform = `rotate(${data.course - mapBearing}deg)`;
                                 }
                             };
                             
@@ -1450,6 +1450,9 @@
                             
                             // Update size on zoom
                             map.on('zoom', markerUpdateSizeROV);
+                            
+                            // Update rotation when map rotates
+                            map.on('rotate', markerUpdateSizeROV);
                             
                             gpsMarkerROV = new maplibregl.Marker({ 
                                 element: el,
@@ -1500,8 +1503,10 @@
                             if (Number.isFinite(data.course)) {
                                 const img = gpsMarkerROV.getElement().querySelector('#rov-heading-img');
                                 if (img) {
+                                    const mapBearing = map.getBearing(); // Get current map rotation
+                                    // Subtract map bearing to keep ROV pointing in absolute direction
                                     // ROV PNG points east (90°), so no offset needed
-                                    img.style.transform = `rotate(${data.course}deg)`;
+                                    img.style.transform = `rotate(${data.course - mapBearing}deg)`;
                                 }
                             }
                             
@@ -2268,7 +2273,8 @@
             let oceanographicWebSocket = null;
             let oceanographicSensors = {};
             let oceanographicData = {}; // Store data points for each sensor
-            const MAX_HEATMAP_POINTS = 1000; // Max points to keep in memory per sensor
+            const MAX_HEATMAP_POINTS = 10000; // Max points to keep in memory per sensor
+            let currentTimeRange = { start: null, end: null }; // Track current time range
             
             // Update oceanographic legend (must be defined here for scope)
             function updateOceanographicLegend() {
@@ -2290,7 +2296,7 @@
                 existingOceanItems.forEach(item => item.remove());
                 
                 // Add checked oceanographic sensors to legend
-                const sensors = ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'];
+                const sensors = ['temperature', 'salinity', 'fluorescence', 'turbidity', 'ph'];
                 let addedCount = 0;
                 
                 sensors.forEach(sensor => {
@@ -2482,7 +2488,7 @@
             }
             
             function connectOceanographic() {
-                const WS_URL = 'ws://localhost:8086';
+                const WS_URL = 'ws://localhost:8087';
                 
                 console.log('Connecting to oceanographic data server...');
                 oceanographicWebSocket = new WebSocket(WS_URL);
@@ -2493,7 +2499,7 @@
                     // Subscribe to all sensors
                     oceanographicWebSocket.send(JSON.stringify({
                         type: 'subscribe',
-                        sensors: ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll']
+                        sensors: ['temperature', 'salinity', 'fluorescence', 'turbidity', 'ph']
                     }));
                     
                     // Request initial historical data for checked layers using datetime picker values
@@ -2522,7 +2528,7 @@
                             console.log('[Oceanographic] Sensor config received:', Object.keys(oceanographicSensors).length, 'sensors');
                             
                             // Enable checkboxes now that we're connected
-                            ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                            ['temperature', 'salinity', 'fluorescence', 'turbidity', 'ph'].forEach(sensor => {
                                 const checkbox = document.getElementById(`ocean-${sensor}-chk`);
                                 const slider = document.getElementById(`ocean-${sensor}-op`);
                                 const label = checkbox.nextElementSibling;
@@ -2570,12 +2576,32 @@
                         } else if (message.type === 'realtime') {
                             // Real-time data point received
                             const data = message.data;
-                            addDataPoint(data);
+                            const dataTime = new Date(data.timestamp).getTime();
                             
-                            // Only update layer if checkbox is checked
-                            const checkbox = document.getElementById(`ocean-${data.sensor}-chk`);
-                            if (checkbox && checkbox.checked) {
-                                updateHeatmapLayer(data.sensor);
+                            // Only add if it falls within current time range
+                            if (currentTimeRange.start && currentTimeRange.end) {
+                                const rangeStart = new Date(currentTimeRange.start).getTime();
+                                const rangeEnd = new Date(currentTimeRange.end).getTime();
+                                
+                                // If time range includes now, accept new data
+                                if (rangeEnd >= Date.now() - 60000) { // Within 1 minute of now
+                                    addDataPoint(data);
+                                    filterDataByTimeRange();
+                                    
+                                    const checkbox = document.getElementById(`ocean-${data.sensor}-chk`);
+                                    if (checkbox && checkbox.checked) {
+                                        updateHeatmapLayer(data.sensor);
+                                    }
+                                }
+                            } else {
+                                // No time range set, use default (last hour)
+                                addDataPoint(data);
+                                filterDataByTimeRange();
+                                
+                                const checkbox = document.getElementById(`ocean-${data.sensor}-chk`);
+                                if (checkbox && checkbox.checked) {
+                                    updateHeatmapLayer(data.sensor);
+                                }
                             }
                             
                             // Update info display
@@ -2591,8 +2617,9 @@
                             
                             console.log(`[Oceanographic] Historical data for ${sensor}: ${data.length} points`);
                             
-                            // Replace existing data with historical data
+                            // Replace with historical data
                             oceanographicData[sensor] = data;
+                            filterDataByTimeRange();
                             
                             // Show heatmap if layer is checked
                             const checkbox = document.getElementById(`ocean-${sensor}-chk`);
@@ -2622,7 +2649,7 @@
                     oceanographicWebSocket = null;
                     
                     // Disable checkboxes
-                    ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                    ['temperature', 'salinity', 'fluorescence', 'turbidity', 'ph'].forEach(sensor => {
                         const checkbox = document.getElementById(`ocean-${sensor}-chk`);
                         const slider = document.getElementById(`ocean-${sensor}-op`);
                         const label = checkbox.nextElementSibling;
@@ -2651,9 +2678,39 @@
                 }
             }
             
+            // Filter data to only show points within current time range
+            function filterDataByTimeRange() {
+                if (!currentTimeRange.start || !currentTimeRange.end) {
+                    // Default to last hour
+                    currentTimeRange.end = new Date().toISOString();
+                    currentTimeRange.start = new Date(Date.now() - 3600000).toISOString();
+                }
+                
+                const rangeStart = new Date(currentTimeRange.start).getTime();
+                const rangeEnd = new Date(currentTimeRange.end).getTime();
+                
+                Object.keys(oceanographicData).forEach(sensor => {
+                    if (oceanographicData[sensor]) {
+                        oceanographicData[sensor] = oceanographicData[sensor].filter(point => {
+                            const pointTime = new Date(point.timestamp).getTime();
+                            return pointTime >= rangeStart && pointTime <= rangeEnd;
+                        });
+                        
+                        // Limit points
+                        if (oceanographicData[sensor].length > MAX_HEATMAP_POINTS) {
+                            // Keep most recent points
+                            oceanographicData[sensor].sort((a, b) => 
+                                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                            );
+                            oceanographicData[sensor] = oceanographicData[sensor].slice(0, MAX_HEATMAP_POINTS);
+                        }
+                    }
+                });
+            }
+            
             // Request historical data for all active layers
             function requestHistoricalDataForActiveLayers(startTime, endTime, binning) {
-                ['temperature', 'salinity', 'fluorescence', 'oxygen', 'ph', 'turbidity', 'chlorophyll'].forEach(sensor => {
+                ['temperature', 'salinity', 'fluorescence', 'turbidity', 'ph'].forEach(sensor => {
                     const checkbox = document.getElementById(`ocean-${sensor}-chk`);
                     if (checkbox && checkbox.checked) {
                         requestHistoricalDataWithRange(sensor, startTime, endTime, binning);
@@ -2703,12 +2760,16 @@
                 const endInput = document.getElementById('ocean-end-datetime');
                 const applyBtn = document.getElementById('ocean-apply-range');
                 
-                // Set default to last 12 hours
+                // Set default to last 1 hour
                 const now = new Date();
-                const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+                const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
                 
-                startInput.value = formatDateTimeLocal(twelveHoursAgo);
+                startInput.value = formatDateTimeLocal(oneHourAgo);
                 endInput.value = formatDateTimeLocal(now);
+                
+                // Set initial time range
+                currentTimeRange.start = oneHourAgo.toISOString();
+                currentTimeRange.end = now.toISOString();
                 
                 // Preset buttons
                 const presets = [
@@ -2728,9 +2789,19 @@
                         startInput.value = formatDateTimeLocal(start);
                         endInput.value = formatDateTimeLocal(end);
                         
+                        // Update current time range
+                        currentTimeRange.start = start.toISOString();
+                        currentTimeRange.end = end.toISOString();
+                        
                         // Update binning info
                         const binning = calculateBinning(start, end);
                         updateBinningInfo('ocean', binning);
+                        
+                        // Clear and request new data
+                        Object.keys(oceanographicData).forEach(sensor => {
+                            oceanographicData[sensor] = [];
+                        });
+                        requestHistoricalDataForActiveLayers(start.toISOString(), end.toISOString(), binning);
                         
                         // Highlight active preset
                         document.querySelectorAll('.time-preset-btn').forEach(btn => {
@@ -2755,8 +2826,17 @@
                         return;
                     }
                     
+                    // Update current time range
+                    currentTimeRange.start = start.toISOString();
+                    currentTimeRange.end = end.toISOString();
+                    
                     const binning = calculateBinning(start, end);
                     updateBinningInfo('ocean', binning);
+                    
+                    // Clear existing data
+                    Object.keys(oceanographicData).forEach(sensor => {
+                        oceanographicData[sensor] = [];
+                    });
                     
                     requestHistoricalDataForActiveLayers(start.toISOString(), end.toISOString(), binning);
                 });
@@ -2834,7 +2914,21 @@
                 
                 // Add heatmap layer if it doesn't exist
                 if (!map.getLayer(layerId)) {
-                    const [min, max] = sensorConfig.range;
+                    // Calculate dynamic range from actual data
+                    const values = data.map(d => d.value).filter(v => v !== null && v !== undefined && isFinite(v));
+                    if (values.length === 0) {
+                        console.warn(`No valid values for sensor ${sensor}`);
+                        return;
+                    }
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    
+                    // Ensure valid range
+                    if (!isFinite(min) || !isFinite(max) || min === max) {
+                        console.warn(`Invalid range for sensor ${sensor}: min=${min}, max=${max}`);
+                        return;
+                    }
+                    
                     const mid = (min + max) / 2;
                     
                     // Get color scheme from sensor config (Viridis by default: yellow to purple)
@@ -2844,50 +2938,38 @@
                     
                     map.addLayer({
                         id: layerId,
-                        type: 'heatmap',
+                        type: 'circle',
                         source: sourceId,
                         paint: {
-                            // Increase weight based on value
-                            'heatmap-weight': [
-                                'interpolate',
-                                ['linear'],
-                                ['get', 'value'],
-                                min, 0,
-                                max, 1
-                            ],
-                            // Heatmap intensity (increase with zoom)
-                            'heatmap-intensity': [
-                                'interpolate',
-                                ['linear'],
-                                ['zoom'],
-                                0, 1,
-                                15, 3
-                            ],
-                            // Color based on density with sensor-specific gradient
-                            'heatmap-color': [
-                                'interpolate',
-                                ['linear'],
-                                ['heatmap-density'],
-                                0, 'rgba(0,0,0,0)',
-                                0.2, colorScheme[0],
-                                0.4, colorScheme[1],
-                                0.6, colorScheme[2],
-                                0.8, colorScheme[3],
-                                1, colorScheme[4]
-                            ],
-                            // Radius of each point (increase with zoom)
-                            'heatmap-radius': [
+                            // Circle radius based on zoom - pixels that scale with map
+                            'circle-radius': [
                                 'interpolate',
                                 ['linear'],
                                 ['zoom'],
                                 0, 2,
-                                9, 20,
-                                15, 40
+                                6, 4,
+                                8, 6,
+                                10, 10,
+                                12, 15,
+                                14, 22,
+                                16, 30,
+                                18, 40
+                            ],
+                            // Color based on value using sensor gradient
+                            'circle-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'value'],
+                                min, colorScheme[0],
+                                min + (max - min) * 0.25, colorScheme[1],
+                                min + (max - min) * 0.5, colorScheme[2],
+                                min + (max - min) * 0.75, colorScheme[3],
+                                max, colorScheme[4]
                             ],
                             // Opacity
-                            'heatmap-opacity': parseFloat(document.getElementById(`ocean-${sensor}-op`).value) || 0.7
+                            'circle-opacity': parseFloat(document.getElementById(`ocean-${sensor}-op`).value) || 0.8
                         }
-                    }, 'gps-trail-ship-layer'); // Add below GPS trail
+                    }); // Add as top layer
                     
                     console.log(`[Oceanographic] Created heatmap layer: ${layerId} with ${data.length} points`);
                 } else {
@@ -2914,7 +2996,7 @@
                 const layerId = `oceanographic-${sensor}-heatmap`;
                 
                 if (map.getLayer(layerId)) {
-                    map.setPaintProperty(layerId, 'heatmap-opacity', opacity);
+                    map.setPaintProperty(layerId, 'circle-opacity', opacity);
                 }
             }
             

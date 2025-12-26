@@ -87,13 +87,20 @@ async function queryInfluxDB() {
         const influxDB = new InfluxDB({ url: INFLUXDB_URL, token: INFLUXDB_TOKEN });
         const queryApi = influxDB.getQueryApi(INFLUXDB_ORG);
         
-        // Query for the most recent telemetry values
-        // Adjust measurement names and field keys based on your actual InfluxDB schema
+        // Query for the most recent telemetry values from sb_sprint (ROV navigation)
         const query = `
             from(bucket: "${INFLUXDB_BUCKET}")
-                |> range(start: -10s)
-                |> filter(fn: (r) => r["_measurement"] == "rov_telemetry")
-                |> filter(fn: (r) => r["_field"] == "depth" or r["_field"] == "heading" or r["_field"] == "altitude" or r["_field"] == "pitch" or r["_field"] == "roll")
+                |> range(start: -30s)
+                |> filter(fn: (r) => r["_measurement"] == "sb_sprint")
+                |> filter(fn: (r) => 
+                    r["_field"] == "SB_Sprint_Depth_Corr" or 
+                    r["_field"] == "SB_Sprint_HeadingTrue" or 
+                    r["_field"] == "SB_Sprint_Altitude_m" or 
+                    r["_field"] == "SB_Sprint_Pitch" or 
+                    r["_field"] == "SB_Sprint_Roll" or
+                    r["_field"] == "SB_Sprint_Latitude" or
+                    r["_field"] == "SB_Sprint_Longitude"
+                )
                 |> last()
         `;
         
@@ -112,11 +119,13 @@ async function queryInfluxDB() {
                 },
                 complete() {
                     resolve({
-                        depth: result.depth || null,
-                        heading: result.heading || null,
-                        altitude: result.altitude || null,
-                        pitch: result.pitch || null,
-                        roll: result.roll || null,
+                        depth: result['SB_Sprint_Depth_Corr'] || null,
+                        heading: result['SB_Sprint_HeadingTrue'] || null,
+                        altitude: result['SB_Sprint_Altitude_m'] || null,
+                        pitch: result['SB_Sprint_Pitch'] || null,
+                        roll: result['SB_Sprint_Roll'] || null,
+                        lat: result['SB_Sprint_Latitude'] || null,
+                        lon: result['SB_Sprint_Longitude'] || null,
                         timestamp: result.timestamp || new Date().toISOString()
                     });
                 }
