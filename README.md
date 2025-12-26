@@ -18,8 +18,9 @@ An interactive web-based map viewer built with **MapLibre GL JS** for visualizin
 - **Interactive Legend**: Click legend items to zoom to that layer's bounds
 - **Responsive Design**: Floating panels on left and bottom-left for controls and legend
 
-  
-<img width="1229" height="942" alt="Screenshot 2025-12-24 at 11 10 06 AM" src="https://github.com/user-attachments/assets/0ce83d5f-19b3-416a-9c63-140a325b006b" />
+
+<img width="1229" height="942" alt="Screenshot_map" src="https://github.com/user-attachments/assets/9e961c39-f9a5-4120-b69d-ca37ad8627d1" />
+
 
 
 ## Prerequisites
