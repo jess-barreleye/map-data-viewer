@@ -1,7 +1,7 @@
 {
-  "name": "maplibre-rov",
+  "name": "map-data-viewer",
   "version": "1.0.0",
-  "description": "MapLibre GL JS viewer for oceanographic survey data with live GPS tracking",
+  "description": "Real-time marine data visualization with MapLibre GL JS for oceanographic survey data and live GPS tracking",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

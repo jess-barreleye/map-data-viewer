@@ -1,6 +1,6 @@
-# 2D Interactive Map Viewer
+# Map Data Viewer
 
-An interactive web-based map viewer built with **MapLibre GL JS** for visualizing oceanographic survey data, including MBTiles raster layers, vector point data, and GeoJSON geometries.
+A real-time web-based marine data visualization platform built with **MapLibre GL JS** for oceanographic survey data, including MBTiles raster layers, vector point data, GeoJSON geometries, and live sensor feeds from OpenRVDAS.
 
 ## Features
 
