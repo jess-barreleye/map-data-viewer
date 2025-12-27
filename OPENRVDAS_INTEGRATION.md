@@ -440,21 +440,6 @@ Expected response:
 }
 ```
 
-## Data Retention
-
-Configure InfluxDB retention policies based on storage capacity:
-
-```bash
-# 7 days full resolution
-influx bucket create --name openrvdas-full --retention 7d
-
-# 30 days downsampled (1 minute averages)
-influx bucket create --name openrvdas-downsampled --retention 30d
-
-# Create continuous query for downsampling
-influx task create --file downsample-task.flux
-```
-
 ## Support
 
 For issues specific to:
