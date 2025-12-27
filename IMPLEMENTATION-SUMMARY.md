@@ -222,7 +222,7 @@ node server-influxdb.js
 ### Frontend Testing
 1. **Time Travel:**
    - Open browser to http://localhost:8000
-   - Expand "🕐 Historical Position" panel
+   - Expand "Historical Position" panel
    - Select a recent date/time (within last 7 days)
    - Click "Go to Time"
    - Verify blue markers appear
@@ -230,7 +230,7 @@ node server-influxdb.js
    - Click "Back to Live" to resume
 
 2. **Historical Tracklines:**
-   - Expand "📊 Historical Tracklines" panel
+   - Expand "Historical Tracklines" panel
    - Set start time (e.g., today 00:00)
    - Set end time (e.g., today 12:00)
    - Check both "Load Ship Track" and "Load ROV Track"
