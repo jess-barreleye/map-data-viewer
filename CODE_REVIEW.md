@@ -405,7 +405,7 @@ oceanographicWebSocket.onclose = () => {
 
 ---
 
-## 📋 Known Issues
+## Known Issues
 
 **None** - All reported issues resolved:
 - ✅ Legend update timing (scope issue fixed)
@@ -429,7 +429,7 @@ oceanographicWebSocket.onclose = () => {
 
 ---
 
-## 📝 Code Quality
+## Code Quality
 
 **Standards Met:**
 - ✅ Consistent naming conventions
