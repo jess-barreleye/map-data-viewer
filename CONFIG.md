@@ -1,6 +1,6 @@
 # Configuration Setup
 
-The MapLibre ROV visualization uses a configuration file for server URLs and API keys.
+The Map Data Viewer uses a configuration file for server URLs and API keys.
 
 ## Initial Setup
 
